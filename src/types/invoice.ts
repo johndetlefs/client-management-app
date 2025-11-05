@@ -1,5 +1,6 @@
 import { Timestamp } from "firebase/firestore";
 import { z } from "zod";
+import { BillableUnit } from "./jobItem";
 
 /**
  * Invoice status enumeration
@@ -22,7 +23,7 @@ export interface InvoiceLine {
   jobTitle: string;
   title: string;
   description?: string;
-  unit: string;
+  unit: BillableUnit;
   quantity: number;
   unitPriceMinor: number; // Price per unit in minor units (cents)
   taxRate?: number; // Tax rate applied (0.10 = 10%)

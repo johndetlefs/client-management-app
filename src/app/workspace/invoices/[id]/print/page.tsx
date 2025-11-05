@@ -7,6 +7,7 @@ import { getInvoiceForPrint } from './actions';
 import { Invoice } from '@/types/invoice';
 import { TenantSettings } from '@/types/tenant';
 import { formatCurrency, formatDate, formatTaxRate } from '@/lib/invoice-utils';
+import { getBillableUnitLabel } from '@/types/jobItem';
 
 export default function InvoicePrintPage() {
     const params = useParams();
@@ -27,6 +28,8 @@ export default function InvoicePrintPage() {
             if (result.success && result.data) {
                 setInvoice(result.data.invoice);
                 setSettings(result.data.settings);
+                console.log('Settings loaded:', result.data.settings);
+                console.log('Tax type:', result.data.settings?.tax?.taxType);
             } else {
                 setError(result.error || 'Failed to load invoice');
             }
@@ -84,6 +87,37 @@ export default function InvoicePrintPage() {
 
                     .page-break {
                         page-break-after: always;
+                    }
+
+                    /* Pagination improvements */
+                    /* Prevent line items from breaking across pages */
+                    tbody tr {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+
+                    /* Repeat table headers on each page */
+                    thead {
+                        display: table-header-group;
+                    }
+
+                    /* Keep totals section together */
+                    .totals-section {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+
+                    /* Keep payment details and footer together */
+                    .payment-section,
+                    .footer-section {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+
+                    /* Prevent orphaned headers */
+                    h3 {
+                        page-break-after: avoid;
+                        break-after: avoid;
                     }
                 }
 
@@ -196,18 +230,27 @@ export default function InvoicePrintPage() {
                     <table className="w-full">
                         <thead>
                             <tr className="border-b-2 border-foreground/20">
-                                <th className="text-left py-3 font-semibold uppercase text-sm">Description</th>
-                                <th className="text-center py-3 font-semibold uppercase text-sm w-20">Qty</th>
-                                <th className="text-right py-3 font-semibold uppercase text-sm w-28">
-                                    Unit Price
+                                <th className="text-left py-3 font-semibold uppercase text-sm w-1/3">Description</th>
+                                <th className="text-center py-3 font-semibold uppercase text-sm w-16">Qty</th>
+                                <th className="text-center py-3 font-semibold uppercase text-sm w-20">Unit</th>
+                                <th className="text-right py-3 font-semibold uppercase text-sm w-24">
+                                    Price
                                 </th>
-                                <th className="text-right py-3 font-semibold uppercase text-sm w-28">Amount</th>
+                                <th className="text-right py-3 font-semibold uppercase text-sm w-24">
+                                    Subtotal
+                                </th>
+                                <th className="text-right py-3 font-semibold uppercase text-sm w-24">
+                                    {(settings?.tax?.taxType && settings.tax.taxType !== 'None')
+                                        ? settings.tax.taxType
+                                        : 'TAX'}
+                                </th>
+                                <th className="text-right py-3 font-semibold uppercase text-sm w-24">Amount</th>
                             </tr>
                         </thead>
                         <tbody>
                             {invoice.lines.map((line, index) => (
                                 <tr key={index} className="border-b border-foreground/10">
-                                    <td className="py-4">
+                                    <td className="py-4 w-1/3">
                                         <p className="font-medium">{line.title}</p>
                                         {line.description && (
                                             <p className="text-sm text-foreground/60 mt-1">{line.description}</p>
@@ -215,11 +258,29 @@ export default function InvoicePrintPage() {
                                         <p className="text-xs text-foreground/50 mt-1">Job: {line.jobTitle}</p>
                                     </td>
                                     <td className="py-4 text-center">
-                                        {line.quantity} {line.unit}
+                                        {line.quantity}
+                                    </td>
+                                    <td className="py-4 text-center">
+                                        {getBillableUnitLabel(line.unit, line.quantity)}
                                     </td>
                                     <td className="py-4 text-right">{formatCurrency(line.unitPriceMinor)}</td>
-                                    <td className="py-4 text-right font-medium">
+                                    <td className="py-4 text-right">
                                         {formatCurrency(line.subtotalMinor)}
+                                    </td>
+                                    <td className="py-4 text-right">
+                                        {line.taxRate ? (
+                                            <>
+                                                {formatCurrency(line.taxMinor)}
+                                                <span className="text-xs text-foreground/50 ml-1">
+                                                    ({formatTaxRate(line.taxRate)})
+                                                </span>
+                                            </>
+                                        ) : (
+                                            '—'
+                                        )}
+                                    </td>
+                                    <td className="py-4 text-right font-medium">
+                                        {formatCurrency(line.totalMinor)}
                                     </td>
                                 </tr>
                             ))}
@@ -228,7 +289,7 @@ export default function InvoicePrintPage() {
                 </div>
 
                 {/* Totals */}
-                <div className="flex justify-end mb-8">
+                <div className="totals-section flex justify-end mb-8">
                     <div className="w-80">
                         <div className="flex justify-between py-2">
                             <span className="font-medium">Subtotal</span>
@@ -275,7 +336,7 @@ export default function InvoicePrintPage() {
                     (settings.bankAccount.accountName ||
                         settings.bankAccount.bsb ||
                         settings.bankAccount.accountNumber) && (
-                        <div className="mb-8 p-6 bg-foreground/5 rounded-lg">
+                        <div className="payment-section mb-8 p-6 bg-foreground/5 rounded-lg">
                             <h3 className="font-semibold mb-3">Payment Details</h3>
                             {settings.bankAccount.accountName && (
                                 <p className="text-sm mb-1">
@@ -315,7 +376,7 @@ export default function InvoicePrintPage() {
 
                 {/* Footer */}
                 {settings?.invoiceFooter && (
-                    <div className="mt-12 pt-6 border-t border-foreground/10 text-center">
+                    <div className="footer-section mt-12 pt-6 border-t border-foreground/10 text-center">
                         <p className="text-sm text-foreground/60">{settings.invoiceFooter}</p>
                     </div>
                 )}

@@ -8,6 +8,7 @@ import { db } from "@/lib/firebase";
 import { getCurrentUserTenantId, getCurrentUserRole } from "@/lib/tenant";
 import { Invoice } from "@/types/invoice";
 import { JobItem } from "@/types/jobItem";
+import { TenantSettings } from "@/types/tenant";
 import {
     formatCurrency,
     formatDate,
@@ -15,6 +16,7 @@ import {
     getStatusLabel,
     getStatusColor,
 } from "@/lib/invoice-utils";
+import { getBillableUnitLabel } from "@/types/jobItem";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
@@ -27,6 +29,7 @@ import {
     deleteDraftInvoice,
     getOpenJobItemsForClient,
 } from "../actions";
+import { getInvoiceForPrint } from "./print/actions";
 
 export default function InvoiceDetailPage() {
     const { user } = useAuth();
@@ -37,6 +40,7 @@ export default function InvoiceDetailPage() {
     const [tenantId, setTenantId] = useState<string | null>(null);
     const [userRole, setUserRole] = useState<"owner" | "staff" | null>(null);
     const [invoice, setInvoice] = useState<Invoice | null>(null);
+    const [settings, setSettings] = useState<TenantSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [showItemSelector, setShowItemSelector] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -53,10 +57,20 @@ export default function InvoiceDetailPage() {
         loadUserData();
     }, [user]);
 
-    // Fetch invoice
+    // Fetch invoice and settings
     useEffect(() => {
         if (!tenantId) return;
 
+        // Load settings
+        const loadSettings = async () => {
+            const result = await getInvoiceForPrint(tenantId, invoiceId);
+            if (result.success && result.data) {
+                setSettings(result.data.settings);
+            }
+        };
+        loadSettings();
+
+        // Subscribe to invoice
         const invoiceRef = doc(db, `tenants/${tenantId}/invoices`, invoiceId);
         const unsubscribe = onSnapshot(invoiceRef, (snapshot) => {
             if (snapshot.exists()) {
@@ -99,7 +113,7 @@ export default function InvoiceDetailPage() {
 
     const handleIssueInvoice = async () => {
         if (!tenantId || !invoice || !user) return;
-        if (!confirm("Issue and send this invoice? This action cannot be undone.")) return;
+        if (!confirm("Issue this invoice? This will assign an invoice number and lock all items. This action cannot be undone.")) return;
 
         setProcessing(true);
         try {
@@ -283,11 +297,17 @@ export default function InvoiceDetailPage() {
                             <thead className="border-b">
                                 <tr className="text-left text-sm text-gray-600">
                                     <th className="pb-2">Description</th>
-                                    <th className="pb-2">Unit</th>
-                                    <th className="pb-2 text-right">Qty</th>
+                                    <th className="pb-2 text-center">Qty</th>
+                                    <th className="pb-2 text-center">Unit</th>
                                     <th className="pb-2 text-right">Price</th>
                                     <th className="pb-2 text-right">Subtotal</th>
-                                    {invoice.lines.some((l) => l.taxRate) && <th className="pb-2 text-right">Tax</th>}
+                                    {invoice.lines.some((l) => l.taxRate) && (
+                                        <th className="pb-2 text-right">
+                                            {settings?.tax?.taxType && settings.tax.taxType !== 'None'
+                                                ? settings.tax.taxType
+                                                : 'Tax'}
+                                        </th>
+                                    )}
                                     <th className="pb-2 text-right">Total</th>
                                     {canEdit && <th className="pb-2"></th>}
                                 </tr>
@@ -300,8 +320,10 @@ export default function InvoiceDetailPage() {
                                             {line.description && <p className="text-sm text-gray-600">{line.description}</p>}
                                             <p className="text-xs text-gray-500">Job: {line.jobTitle}</p>
                                         </td>
-                                        <td className="py-3">{line.unit}</td>
-                                        <td className="py-3 text-right">{line.quantity}</td>
+                                        <td className="py-3 text-center">{line.quantity}</td>
+                                        <td className="py-3 text-center">
+                                            {getBillableUnitLabel(line.unit, line.quantity)}
+                                        </td>
                                         <td className="py-3 text-right">{formatCurrency(line.unitPriceMinor)}</td>
                                         <td className="py-3 text-right">{formatCurrency(line.subtotalMinor)}</td>
                                         {invoice.lines.some((l) => l.taxRate) && (
@@ -403,7 +425,7 @@ export default function InvoiceDetailPage() {
                 )}
                 {isDraft && invoice.lines.length > 0 && (
                     <Button onClick={handleIssueInvoice} disabled={processing}>
-                        Issue & Send Invoice
+                        Issue Invoice
                     </Button>
                 )}
             </div>
