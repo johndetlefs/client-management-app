@@ -46,13 +46,16 @@ This prevents concurrent invoice creation from double-billing the same item.
 ### Local Development
 
 ```bash
-npm run dev                    # Start Next.js dev server
-firebase emulators:start       # Run Firebase emulators (Auth/Firestore/Storage)
+npm run dev                    # Start Next.js dev server + Firebase emulators (both)
+npm run dev:next               # Start only Next.js dev server
+npm run dev:live               # Start Next.js with live Firebase (no emulators)
+npm run emulators              # Start only Firebase emulators
+npm run emulators:clear        # Clear all emulator data (users, Firestore, Storage)
 npm run lint                   # ESLint check
 npm run build                  # Production build test
 ```
 
-**Environment**: Dev uses Firebase emulators automatically when `NODE_ENV=development`. Ensure `.env.local` contains `NEXT_PUBLIC_FIREBASE_*` client config and admin SDK credentials.
+**Environment**: `npm run dev` automatically starts both Firebase emulators and Next.js. The app uses emulators when `NODE_ENV=development`. Use `npm run dev:live` to test against live Firebase. Ensure `.env.local` contains `NEXT_PUBLIC_FIREBASE_*` client config and admin SDK credentials.
 
 ### Path Aliases
 
