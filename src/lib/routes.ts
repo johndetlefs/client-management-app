@@ -96,7 +96,6 @@ export const WORKSPACE_NAV_ITEMS: NavItem[] = [
     label: "Invoices",
     href: WORKSPACE_ROUTES.INVOICES,
     icon: "📄",
-    comingSoon: true,
   },
 ];
 
