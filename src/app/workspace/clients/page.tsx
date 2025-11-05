@@ -189,8 +189,8 @@ export default function ClientsPage() {
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${client.isActive
-                                                            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-                                                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                                        ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
                                                         }`}>
                                                         {client.isActive ? 'Active' : 'Inactive'}
                                                     </span>

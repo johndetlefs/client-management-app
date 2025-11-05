@@ -1,7 +1,7 @@
 /**
  * Tax type options
  */
-export type TaxType = 'GST' | 'VAT' | 'Sales Tax' | 'None';
+export type TaxType = "GST" | "VAT" | "Sales Tax" | "None";
 
 /**
  * Tax settings
