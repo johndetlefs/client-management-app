@@ -24,7 +24,7 @@ export default function LoginPage() {
 
         try {
             await signIn(email, password);
-            router.push('/dashboard');
+            router.push('/workspace/dashboard');
         } catch (err) {
             if (err instanceof Error) {
                 setError(err.message);

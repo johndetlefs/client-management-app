@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
+import { ROUTES, WORKSPACE_NAV_ITEMS, type NavItem } from '@/lib/routes';
 
 export function AppHeader() {
     const { user, signOut } = useAuth();
@@ -14,23 +15,16 @@ export function AppHeader() {
 
     const handleSignOut = async () => {
         await signOut();
-        router.push('/login');
+        router.push(ROUTES.PUBLIC.LOGIN);
         setMobileMenuOpen(false);
     };
-
-    const navLinks = [
-        { href: '/dashboard', label: 'Dashboard' },
-        { href: '/clients', label: 'Clients' },
-        { href: '/jobs', label: 'Jobs' },
-        { href: '/invoices', label: 'Invoices' },
-    ];
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-foreground/10 bg-background">
             <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
                 {/* Logo */}
                 <Link
-                    href="/dashboard"
+                    href={ROUTES.WORKSPACE.DASHBOARD}
                     className="flex items-center gap-2 text-xl font-semibold hover:opacity-80 transition-opacity"
                     onClick={() => setMobileMenuOpen(false)}
                 >
@@ -53,16 +47,30 @@ export function AppHeader() {
 
                 {/* Desktop Navigation */}
                 <nav className="hidden md:flex items-center gap-6">
-                    {navLinks.map((link) => (
+                    {WORKSPACE_NAV_ITEMS.map((item: NavItem) => (
                         <Link
-                            key={link.href}
-                            href={link.href}
-                            className={`text-sm font-medium transition-colors ${pathname === link.href
+                            key={item.href}
+                            href={item.comingSoon ? '#' : item.href}
+                            className={`text-sm font-medium transition-colors flex items-center gap-1 ${
+                                item.comingSoon
+                                    ? 'text-foreground/40 cursor-not-allowed'
+                                    : pathname === item.href || pathname.startsWith(item.href + '/')
                                     ? 'text-foreground'
                                     : 'text-foreground/80 hover:text-foreground'
-                                }`}
+                            }`}
+                            onClick={(e) => {
+                                if (item.comingSoon) {
+                                    e.preventDefault();
+                                } else {
+                                    setMobileMenuOpen(false);
+                                }
+                            }}
                         >
-                            {link.label}
+                            {item.icon && <span>{item.icon}</span>}
+                            <span>{item.label}</span>
+                            {item.comingSoon && (
+                                <span className="text-xs bg-foreground/10 px-1.5 py-0.5 rounded">Soon</span>
+                            )}
                         </Link>
                     ))}
 
@@ -98,17 +106,30 @@ export function AppHeader() {
             {mobileMenuOpen && (
                 <div className="md:hidden border-t border-foreground/10 bg-background">
                     <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
-                        {navLinks.map((link) => (
+                        {WORKSPACE_NAV_ITEMS.map((item: NavItem) => (
                             <Link
-                                key={link.href}
-                                href={link.href}
-                                className={`text-sm font-medium py-2 transition-colors ${pathname === link.href
+                                key={item.href}
+                                href={item.comingSoon ? '#' : item.href}
+                                className={`text-sm font-medium py-2 transition-colors flex items-center gap-2 ${
+                                    item.comingSoon
+                                        ? 'text-foreground/40 cursor-not-allowed'
+                                        : pathname === item.href || pathname.startsWith(item.href + '/')
                                         ? 'text-foreground'
                                         : 'text-foreground/80 hover:text-foreground'
-                                    }`}
-                                onClick={() => setMobileMenuOpen(false)}
+                                }`}
+                                onClick={(e) => {
+                                    if (item.comingSoon) {
+                                        e.preventDefault();
+                                    } else {
+                                        setMobileMenuOpen(false);
+                                    }
+                                }}
                             >
-                                {link.label}
+                                {item.icon && <span>{item.icon}</span>}
+                                <span>{item.label}</span>
+                                {item.comingSoon && (
+                                    <span className="text-xs bg-foreground/10 px-1.5 py-0.5 rounded">Soon</span>
+                                )}
                             </Link>
                         ))}
 

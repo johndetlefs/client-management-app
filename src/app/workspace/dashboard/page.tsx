@@ -4,9 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/lib/routes';
 
 export default function DashboardPage() {
     const { user } = useAuth();
+    const router = useRouter();
 
     return (
         <ProtectedRoute>
@@ -34,8 +37,12 @@ export default function DashboardPage() {
                                 <p className="text-zinc-600 dark:text-zinc-400">
                                     Manage your client records
                                 </p>
-                                <Button variant="secondary" className="mt-4 w-full" disabled>
-                                    Coming Soon
+                                <Button 
+                                    variant="secondary" 
+                                    className="mt-4 w-full"
+                                    onClick={() => router.push(ROUTES.CLIENTS.LIST)}
+                                >
+                                    View Clients
                                 </Button>
                             </CardContent>
                         </Card>

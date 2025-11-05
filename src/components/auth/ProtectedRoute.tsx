@@ -3,13 +3,14 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDefaultUnauthenticatedRoute } from '@/lib/routes';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
 }
 
 /**
- * Wrapper for private routes - redirects to /login if not authenticated
+ * Wrapper for private routes - redirects to login if not authenticated
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
     const { user, loading } = useAuth();
@@ -17,7 +18,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
     useEffect(() => {
         if (!loading && !user) {
-            router.push('/login');
+            router.push(getDefaultUnauthenticatedRoute());
         }
     }, [user, loading, router]);
 

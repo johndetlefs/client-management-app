@@ -8,6 +8,7 @@ import { ConditionallyPublicRoute } from '@/components/auth/ConditionallyPublicR
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
+import { initializeNewUser } from '@/lib/initializeUser';
 
 export default function SignupPage() {
     const [email, setEmail] = useState('');
@@ -35,8 +36,17 @@ export default function SignupPage() {
         setLoading(true);
 
         try {
-            await signUp(email, password);
-            router.push('/dashboard');
+            const userCredential = await signUp(email, password);
+            
+            // Initialize user profile and tenant
+            const initResult = await initializeNewUser(userCredential.uid, email);
+            
+            if (!initResult.success) {
+                setError(initResult.error || 'Failed to set up your account');
+                return;
+            }
+            
+            router.push('/workspace/dashboard');
         } catch (err) {
             if (err instanceof Error) {
                 setError(err.message);

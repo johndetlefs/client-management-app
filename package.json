@@ -6,7 +6,7 @@
     "dev": "concurrently \"npm run emulators\" \"npm run dev:next\" --names \"firebase,next\" --prefix-colors \"yellow,cyan\"",
     "dev:next": "next dev",
     "dev:live": "next dev",
-    "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit --debug-log-file=false",
+    "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit",
     "emulators:clear": "rm -rf emulator-data && echo 'Emulator data cleared!'",
     "build": "next build",
     "start": "next start",
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "firebase": "^12.5.0",
+    "firebase-admin": "^13.5.0",
     "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0"

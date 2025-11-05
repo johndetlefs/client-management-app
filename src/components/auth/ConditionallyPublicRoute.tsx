@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDefaultAuthenticatedRoute } from '@/lib/routes';
 
 interface ConditionallyPublicRouteProps {
     children: React.ReactNode;
@@ -15,16 +16,17 @@ interface ConditionallyPublicRouteProps {
  */
 export function ConditionallyPublicRoute({
     children,
-    redirectTo = '/dashboard',
+    redirectTo,
 }: ConditionallyPublicRouteProps) {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const defaultRedirect = redirectTo || getDefaultAuthenticatedRoute();
 
     useEffect(() => {
         if (!loading && user) {
-            router.push(redirectTo);
+            router.push(defaultRedirect);
         }
-    }, [user, loading, router, redirectTo]);
+    }, [user, loading, router, defaultRedirect]);
 
     // Show loading state while checking auth
     if (loading) {
