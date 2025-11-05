@@ -19,12 +19,14 @@ const auth = getAuth(app);
 
 // Connect to emulator in development
 if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
-  // Check if we're already connected to avoid double initialization
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(auth as any)._canInitEmulator) {
+  try {
     connectAuthEmulator(auth, "http://localhost:9099", {
       disableWarnings: true,
     });
+    console.log("🔧 Connected to Firebase Auth Emulator");
+  } catch {
+    // Emulator already connected, ignore
+    console.log("🔧 Firebase Auth Emulator already connected");
   }
 }
 

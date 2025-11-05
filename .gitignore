@@ -37,8 +37,12 @@ yarn-error.log*
 # Firebase service account keys (NEVER COMMIT THESE)
 *-firebase-adminsdk-*.json
 
-# Firebase emulator data
+# Firebase emulator data and debug logs
 emulator-data/
+*-debug.log
+ui-debug.log
+firebase-debug.log
+firestore-debug.log
 
 # vercel
 .vercel
