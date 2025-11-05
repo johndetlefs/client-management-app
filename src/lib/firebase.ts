@@ -21,24 +21,39 @@ const auth = getAuth(app);
 // Initialize Firestore
 const db = getFirestore(app);
 
-// Connect to emulators in development
-if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
-  try {
-    connectAuthEmulator(auth, "http://localhost:9099", {
-      disableWarnings: true,
-    });
-    console.log("🔧 Connected to Firebase Auth Emulator");
-  } catch {
-    // Emulator already connected, ignore
-    console.log("🔧 Firebase Auth Emulator already connected");
-  }
+// Connect to emulators in development (both client and server)
+if (process.env.NODE_ENV === "development") {
+  // Only try to connect if we haven't already
+  const isServer = typeof window === "undefined";
 
-  try {
-    connectFirestoreEmulator(db, "localhost", 8080);
-    console.log("🔧 Connected to Firestore Emulator");
-  } catch {
-    // Emulator already connected, ignore
-    console.log("🔧 Firestore Emulator already connected");
+  // For client-side
+  if (!isServer) {
+    try {
+      connectAuthEmulator(auth, "http://localhost:9099", {
+        disableWarnings: true,
+      });
+      console.log("🔧 Connected to Firebase Auth Emulator (Client)");
+    } catch {
+      // Emulator already connected, ignore
+      console.log("🔧 Firebase Auth Emulator already connected (Client)");
+    }
+
+    try {
+      connectFirestoreEmulator(db, "localhost", 8080);
+      console.log("🔧 Connected to Firestore Emulator (Client)");
+    } catch {
+      // Emulator already connected, ignore
+      console.log("🔧 Firestore Emulator already connected (Client)");
+    }
+  } else {
+    // For server-side (server actions, API routes)
+    try {
+      connectFirestoreEmulator(db, "localhost", 8080);
+      console.log("🔧 Connected to Firestore Emulator (Server)");
+    } catch {
+      // Emulator already connected, ignore
+      console.log("🔧 Firestore Emulator already connected (Server)");
+    }
   }
 }
 

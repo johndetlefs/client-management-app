@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
 import { getCurrentUserTenantId } from '@/lib/tenant';
 import { getClient, deleteClient } from '../actions';
-import { CLIENT_ROUTES } from '@/lib/routes';
+import { getJobsByClient } from '../../jobs/actions';
+import { CLIENT_ROUTES, JOB_ROUTES } from '@/lib/routes';
 import type { Client } from '@/types/client';
+import type { Job, JobStatus } from '@/types/job';
 
 export default function ClientViewPage() {
     const params = useParams();
@@ -18,6 +20,7 @@ export default function ClientViewPage() {
     const clientId = params.id as string;
 
     const [client, setClient] = useState<Client | null>(null);
+    const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +39,12 @@ export default function ClientViewPage() {
             const result = await getClient(tenantId, clientId);
             if (result.success) {
                 setClient(result.data);
+
+                // Load jobs for this client
+                const jobsResult = await getJobsByClient(tenantId, clientId);
+                if (jobsResult.success) {
+                    setJobs(jobsResult.data);
+                }
             } else {
                 setError(result.error);
             }
@@ -76,6 +85,19 @@ export default function ClientViewPage() {
             month: '2-digit',
             year: 'numeric'
         });
+    };
+
+    const getStatusColor = (status: JobStatus) => {
+        switch (status) {
+            case 'active':
+                return 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300';
+            case 'completed':
+                return 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300';
+            case 'archived':
+                return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400';
+            default:
+                return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400';
+        }
     };
 
     if (loading) {
@@ -192,8 +214,8 @@ export default function ClientViewPage() {
                                     <dt className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Status</dt>
                                     <dd className="mt-1">
                                         <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${client.isActive
-                                                ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
                                             }`}>
                                             {client.isActive ? 'Active' : 'Inactive'}
                                         </span>
@@ -280,6 +302,58 @@ export default function ClientViewPage() {
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* Jobs */}
+                    <Card className="mb-6">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle>Jobs</CardTitle>
+                                <Link href={`${JOB_ROUTES.NEW}?clientId=${clientId}`}>
+                                    <Button variant="secondary" className="text-sm">
+                                        + New Job
+                                    </Button>
+                                </Link>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {jobs.length === 0 ? (
+                                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                    No jobs for this client yet.
+                                </p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {jobs.map((job) => (
+                                        <Link
+                                            key={job.id}
+                                            href={JOB_ROUTES.VIEW(job.id)}
+                                            className="block border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-medium text-foreground truncate">{job.title}</h4>
+                                                    {job.reference && (
+                                                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                                                            Ref: {job.reference}
+                                                        </p>
+                                                    )}
+                                                    {(job.startDate || job.endDate) && (
+                                                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                                                            {job.startDate && formatDate(job.startDate as Date)}
+                                                            {job.startDate && job.endDate && ' - '}
+                                                            {job.endDate && formatDate(job.endDate as Date)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(job.status)}`}>
+                                                    {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
                     {/* Metadata */}
                     <Card className="mb-6">

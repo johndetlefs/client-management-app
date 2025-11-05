@@ -1,19 +1,7 @@
 "use server";
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy,
-  serverTimestamp,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import type { Client, ClientFormData, ClientUpdateData } from "@/types/client";
 
 /**
@@ -24,20 +12,21 @@ type ActionResult<T = void> =
   | { success: false; error: string };
 
 /**
- * Helper function to serialize Firestore Timestamps to Date objects
+ * Helper function to convert Firestore document to Client
  */
-function serializeClient(docId: string, data: Record<string, unknown>): Client {
+function docToClient(
+  doc:
+    | FirebaseFirestore.QueryDocumentSnapshot
+    | FirebaseFirestore.DocumentSnapshot
+): Client {
+  const data = doc.data();
+  if (!data) throw new Error("Document has no data");
+
   return {
-    id: docId,
+    id: doc.id,
     ...data,
-    createdAt:
-      data.createdAt instanceof Timestamp
-        ? data.createdAt.toDate()
-        : data.createdAt,
-    updatedAt:
-      data.updatedAt instanceof Timestamp
-        ? data.updatedAt.toDate()
-        : data.updatedAt,
+    createdAt: data.createdAt?.toDate() || new Date(),
+    updatedAt: data.updatedAt?.toDate() || new Date(),
   } as Client;
 }
 
@@ -48,13 +37,10 @@ export async function getClients(
   tenantId: string
 ): Promise<ActionResult<Client[]>> {
   try {
-    const clientsRef = collection(db, `tenants/${tenantId}/clients`);
-    const q = query(clientsRef, orderBy("name", "asc"));
-    const snapshot = await getDocs(q);
+    const clientsRef = adminDb.collection(`tenants/${tenantId}/clients`);
+    const snapshot = await clientsRef.orderBy("name", "asc").get();
 
-    const clients: Client[] = snapshot.docs.map((doc) =>
-      serializeClient(doc.id, doc.data())
-    );
+    const clients: Client[] = snapshot.docs.map((doc) => docToClient(doc));
 
     return { success: true, data: clients };
   } catch (error) {
@@ -71,14 +57,14 @@ export async function getClient(
   clientId: string
 ): Promise<ActionResult<Client>> {
   try {
-    const clientRef = doc(db, `tenants/${tenantId}/clients`, clientId);
-    const clientDoc = await getDoc(clientRef);
+    const clientRef = adminDb.doc(`tenants/${tenantId}/clients/${clientId}`);
+    const clientDoc = await clientRef.get();
 
-    if (!clientDoc.exists()) {
+    if (!clientDoc.exists) {
       return { success: false, error: "Client not found" };
     }
 
-    const client = serializeClient(clientDoc.id, clientDoc.data());
+    const client = docToClient(clientDoc);
 
     return { success: true, data: client };
   } catch (error) {
@@ -96,17 +82,17 @@ export async function createClient(
   data: ClientFormData
 ): Promise<ActionResult<string>> {
   try {
-    const clientsRef = collection(db, `tenants/${tenantId}/clients`);
+    const clientsRef = adminDb.collection(`tenants/${tenantId}/clients`);
 
     const newClient = {
       ...data,
       tenantId,
       createdBy: userId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
-    const docRef = await addDoc(clientsRef, newClient);
+    const docRef = await clientsRef.add(newClient);
 
     return { success: true, data: docRef.id };
   } catch (error) {
@@ -124,14 +110,14 @@ export async function updateClient(
   data: ClientUpdateData
 ): Promise<ActionResult> {
   try {
-    const clientRef = doc(db, `tenants/${tenantId}/clients`, clientId);
+    const clientRef = adminDb.doc(`tenants/${tenantId}/clients/${clientId}`);
 
     const updateData = {
       ...data,
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
-    await updateDoc(clientRef, updateData);
+    await clientRef.update(updateData);
 
     return { success: true, data: undefined };
   } catch (error) {
@@ -148,8 +134,8 @@ export async function deleteClient(
   clientId: string
 ): Promise<ActionResult> {
   try {
-    const clientRef = doc(db, `tenants/${tenantId}/clients`, clientId);
-    await deleteDoc(clientRef);
+    const clientRef = adminDb.doc(`tenants/${tenantId}/clients/${clientId}`);
+    await clientRef.delete();
 
     return { success: true, data: undefined };
   } catch (error) {
@@ -166,12 +152,12 @@ export async function searchClients(
   searchTerm: string
 ): Promise<ActionResult<Client[]>> {
   try {
-    const clientsRef = collection(db, `tenants/${tenantId}/clients`);
-    const snapshot = await getDocs(clientsRef);
+    const clientsRef = adminDb.collection(`tenants/${tenantId}/clients`);
+    const snapshot = await clientsRef.get();
 
     const searchLower = searchTerm.toLowerCase();
     const clients: Client[] = snapshot.docs
-      .map((doc) => serializeClient(doc.id, doc.data()))
+      .map((doc) => docToClient(doc))
       .filter(
         (client) =>
           client.name.toLowerCase().includes(searchLower) ||

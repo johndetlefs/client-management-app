@@ -5,6 +5,38 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "jobId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "jobItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "clientId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "jobItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "clientId",
           "order": "ASCENDING"
         },
