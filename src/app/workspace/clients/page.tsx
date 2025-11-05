@@ -24,7 +24,7 @@ export default function ClientsPage() {
     // Derive filtered clients from clients and searchTerm
     const filteredClients = useMemo(() => {
         if (!searchTerm) return clients;
-        
+
         const searchLower = searchTerm.toLowerCase();
         return clients.filter(client =>
             client.name.toLowerCase().includes(searchLower) ||
@@ -135,7 +135,7 @@ export default function ClientsPage() {
                                     {searchTerm ? 'No clients found' : 'No clients yet'}
                                 </h3>
                                 <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                                    {searchTerm 
+                                    {searchTerm
                                         ? 'Try adjusting your search terms'
                                         : 'Get started by creating your first client'
                                     }
@@ -188,7 +188,7 @@ export default function ClientsPage() {
                                         </div>
 
                                         <div className="flex gap-2">
-                                            <Link 
+                                            <Link
                                                 href={CLIENT_ROUTES.VIEW(client.id)}
                                                 className="flex-1"
                                             >
@@ -196,7 +196,7 @@ export default function ClientsPage() {
                                                     View
                                                 </Button>
                                             </Link>
-                                            <Link 
+                                            <Link
                                                 href={CLIENT_ROUTES.EDIT(client.id)}
                                                 className="flex-1"
                                             >

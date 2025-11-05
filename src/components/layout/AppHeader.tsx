@@ -51,13 +51,12 @@ export function AppHeader() {
                         <Link
                             key={item.href}
                             href={item.comingSoon ? '#' : item.href}
-                            className={`text-sm font-medium transition-colors flex items-center gap-1 ${
-                                item.comingSoon
+                            className={`text-sm font-medium transition-colors flex items-center gap-1 ${item.comingSoon
                                     ? 'text-foreground/40 cursor-not-allowed'
                                     : pathname === item.href || pathname.startsWith(item.href + '/')
-                                    ? 'text-foreground'
-                                    : 'text-foreground/80 hover:text-foreground'
-                            }`}
+                                        ? 'text-foreground'
+                                        : 'text-foreground/80 hover:text-foreground'
+                                }`}
                             onClick={(e) => {
                                 if (item.comingSoon) {
                                     e.preventDefault();
@@ -110,13 +109,12 @@ export function AppHeader() {
                             <Link
                                 key={item.href}
                                 href={item.comingSoon ? '#' : item.href}
-                                className={`text-sm font-medium py-2 transition-colors flex items-center gap-2 ${
-                                    item.comingSoon
+                                className={`text-sm font-medium py-2 transition-colors flex items-center gap-2 ${item.comingSoon
                                         ? 'text-foreground/40 cursor-not-allowed'
                                         : pathname === item.href || pathname.startsWith(item.href + '/')
-                                        ? 'text-foreground'
-                                        : 'text-foreground/80 hover:text-foreground'
-                                }`}
+                                            ? 'text-foreground'
+                                            : 'text-foreground/80 hover:text-foreground'
+                                    }`}
                                 onClick={(e) => {
                                     if (item.comingSoon) {
                                         e.preventDefault();

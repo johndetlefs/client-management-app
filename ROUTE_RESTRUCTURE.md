@@ -7,6 +7,7 @@ Successfully restructured the application to use `/workspace/*` as the prefix fo
 ## New URL Structure
 
 ### Before:
+
 ```
 /                          # Public landing
 /login, /signup, etc.      # Auth pages
@@ -18,6 +19,7 @@ Successfully restructured the application to use `/workspace/*` as the prefix fo
 ```
 
 ### After:
+
 ```
 /                              # Public landing
 /login, /signup, etc.          # Auth pages
@@ -31,6 +33,7 @@ Successfully restructured the application to use `/workspace/*` as the prefix fo
 ## Files Modified
 
 ### 1. Moved Pages
+
 - `src/app/dashboard/page.tsx` → `src/app/workspace/dashboard/page.tsx`
 - `src/app/dashboard/clients/*` → `src/app/workspace/clients/*`
   - `page.tsx` (list)
@@ -39,10 +42,12 @@ Successfully restructured the application to use `/workspace/*` as the prefix fo
   - `[id]/edit/page.tsx` (edit/create)
 
 ### 2. Updated Auth Redirects
+
 - **`src/app/login/page.tsx`**: Changed redirect from `/dashboard` to `/workspace/dashboard`
 - **`src/app/signup/page.tsx`**: Changed redirect from `/dashboard` to `/workspace/dashboard`
 
 ### 3. Updated Internal Links
+
 - **Dashboard**: Button links to `/workspace/clients`
 - **Clients List**: All navigation links updated:
   - "New Client" → `/workspace/clients/new/edit`
@@ -62,6 +67,7 @@ Successfully restructured the application to use `/workspace/*` as the prefix fo
 ## Future Structure
 
 With this pattern, future features will follow:
+
 ```
 /workspace/dashboard       # Home/overview
 /workspace/clients         # Clients management

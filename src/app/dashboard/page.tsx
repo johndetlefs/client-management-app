@@ -5,7 +5,6 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
 import { useRouter } from 'next/navigation';
-import { ROUTES } from '@/lib/routes';
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -40,7 +39,7 @@ export default function DashboardPage() {
                                 <Button
                                     variant="secondary"
                                     className="mt-4 w-full"
-                                    onClick={() => router.push(ROUTES.CLIENTS.LIST)}
+                                    onClick={() => router.push('/dashboard/clients')}
                                 >
                                     View Clients
                                 </Button>

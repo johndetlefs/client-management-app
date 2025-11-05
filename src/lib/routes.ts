@@ -7,21 +7,21 @@
  * Public routes (unauthenticated)
  */
 export const PUBLIC_ROUTES = {
-  HOME: '/',
-  LOGIN: '/login',
-  SIGNUP: '/signup',
-  RESET_PASSWORD: '/reset-password',
+  HOME: "/",
+  LOGIN: "/login",
+  SIGNUP: "/signup",
+  RESET_PASSWORD: "/reset-password",
 } as const;
 
 /**
  * Workspace routes (authenticated)
  */
 export const WORKSPACE_ROUTES = {
-  DASHBOARD: '/workspace/dashboard',
-  CLIENTS: '/workspace/clients',
-  JOBS: '/workspace/jobs', // Future
-  INVOICES: '/workspace/invoices', // Future
-  SETTINGS: '/workspace/settings', // Future
+  DASHBOARD: "/workspace/dashboard",
+  CLIENTS: "/workspace/clients",
+  JOBS: "/workspace/jobs", // Future
+  INVOICES: "/workspace/invoices", // Future
+  SETTINGS: "/workspace/settings", // Future
 } as const;
 
 /**
@@ -29,7 +29,7 @@ export const WORKSPACE_ROUTES = {
  */
 export const CLIENT_ROUTES = {
   LIST: WORKSPACE_ROUTES.CLIENTS,
-  NEW: '/workspace/clients/new/edit',
+  NEW: "/workspace/clients/new/edit",
   VIEW: (id: string) => `/workspace/clients/${id}`,
   EDIT: (id: string) => `/workspace/clients/${id}/edit`,
 } as const;
@@ -39,7 +39,7 @@ export const CLIENT_ROUTES = {
  */
 export const JOB_ROUTES = {
   LIST: WORKSPACE_ROUTES.JOBS,
-  NEW: '/workspace/jobs/new/edit',
+  NEW: "/workspace/jobs/new/edit",
   VIEW: (id: string) => `/workspace/jobs/${id}`,
   EDIT: (id: string) => `/workspace/jobs/${id}/edit`,
 } as const;
@@ -49,7 +49,7 @@ export const JOB_ROUTES = {
  */
 export const INVOICE_ROUTES = {
   LIST: WORKSPACE_ROUTES.INVOICES,
-  NEW: '/workspace/invoices/new/edit',
+  NEW: "/workspace/invoices/new/edit",
   VIEW: (id: string) => `/workspace/invoices/${id}`,
   EDIT: (id: string) => `/workspace/invoices/${id}/edit`,
   PUBLIC: (token: string) => `/invoices/${token}`, // Public invoice view
@@ -78,25 +78,25 @@ export interface NavItem {
 
 export const WORKSPACE_NAV_ITEMS: NavItem[] = [
   {
-    label: 'Dashboard',
+    label: "Dashboard",
     href: WORKSPACE_ROUTES.DASHBOARD,
-    icon: '🏠',
+    icon: "🏠",
   },
   {
-    label: 'Clients',
+    label: "Clients",
     href: WORKSPACE_ROUTES.CLIENTS,
-    icon: '👥',
+    icon: "👥",
   },
   {
-    label: 'Jobs',
+    label: "Jobs",
     href: WORKSPACE_ROUTES.JOBS,
-    icon: '💼',
+    icon: "💼",
     comingSoon: true,
   },
   {
-    label: 'Invoices',
+    label: "Invoices",
     href: WORKSPACE_ROUTES.INVOICES,
-    icon: '📄',
+    icon: "📄",
     comingSoon: true,
   },
 ];
@@ -105,7 +105,7 @@ export const WORKSPACE_NAV_ITEMS: NavItem[] = [
  * Helper to check if a path is a workspace route
  */
 export function isWorkspaceRoute(path: string): boolean {
-  return path.startsWith('/workspace');
+  return path.startsWith("/workspace");
 }
 
 /**

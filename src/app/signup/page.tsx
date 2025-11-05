@@ -37,15 +37,15 @@ export default function SignupPage() {
 
         try {
             const userCredential = await signUp(email, password);
-            
+
             // Initialize user profile and tenant
             const initResult = await initializeNewUser(userCredential.uid, email);
-            
+
             if (!initResult.success) {
                 setError(initResult.error || 'Failed to set up your account');
                 return;
             }
-            
+
             router.push('/workspace/dashboard');
         } catch (err) {
             if (err instanceof Error) {
