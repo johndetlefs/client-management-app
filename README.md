@@ -7,9 +7,9 @@ A multi-tenant SaaS application for managing clients, jobs, and invoices built w
 ### Prerequisites
 
 - Node.js 20+
+- Firebase CLI: `npm install -g firebase-tools`
+- Java 17+ (required for Firebase emulators): `brew install openjdk` or download from https://jdk.java.net/
 - A Firebase project (see `.firebaserc` for project ID)
-
-**Note**: Firebase CLI is included as a dev dependency - no global installation needed!
 
 ### Setup
 
