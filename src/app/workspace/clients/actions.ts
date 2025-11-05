@@ -11,6 +11,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Client, ClientFormData, ClientUpdateData } from "@/types/client";
@@ -23,6 +24,24 @@ type ActionResult<T = void> =
   | { success: false; error: string };
 
 /**
+ * Helper function to serialize Firestore Timestamps to Date objects
+ */
+function serializeClient(docId: string, data: Record<string, unknown>): Client {
+  return {
+    id: docId,
+    ...data,
+    createdAt:
+      data.createdAt instanceof Timestamp
+        ? data.createdAt.toDate()
+        : data.createdAt,
+    updatedAt:
+      data.updatedAt instanceof Timestamp
+        ? data.updatedAt.toDate()
+        : data.updatedAt,
+  } as Client;
+}
+
+/**
  * Get all clients for a tenant
  */
 export async function getClients(
@@ -33,15 +52,8 @@ export async function getClients(
     const q = query(clientsRef, orderBy("name", "asc"));
     const snapshot = await getDocs(q);
 
-    const clients: Client[] = snapshot.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-          // Convert Firestore Timestamps to Date for serialization
-          createdAt: doc.data().createdAt,
-          updatedAt: doc.data().updatedAt,
-        } as Client)
+    const clients: Client[] = snapshot.docs.map((doc) =>
+      serializeClient(doc.id, doc.data())
     );
 
     return { success: true, data: clients };
@@ -66,12 +78,7 @@ export async function getClient(
       return { success: false, error: "Client not found" };
     }
 
-    const client: Client = {
-      id: clientDoc.id,
-      ...clientDoc.data(),
-      createdAt: clientDoc.data().createdAt,
-      updatedAt: clientDoc.data().updatedAt,
-    } as Client;
+    const client = serializeClient(clientDoc.id, clientDoc.data());
 
     return { success: true, data: client };
   } catch (error) {
@@ -164,15 +171,7 @@ export async function searchClients(
 
     const searchLower = searchTerm.toLowerCase();
     const clients: Client[] = snapshot.docs
-      .map(
-        (doc) =>
-          ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt,
-            updatedAt: doc.data().updatedAt,
-          } as Client)
-      )
+      .map((doc) => serializeClient(doc.id, doc.data()))
       .filter(
         (client) =>
           client.name.toLowerCase().includes(searchLower) ||
