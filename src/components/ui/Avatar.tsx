@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import md5 from 'md5';
 
 interface AvatarProps {
     email: string;
@@ -14,14 +15,9 @@ interface AvatarProps {
 export function Avatar({ email, photoURL, displayName, size = 40, className = '' }: AvatarProps) {
     const [imageError, setImageError] = useState(false);
 
-    // Generate Gravatar URL from email
+    // Generate Gravatar URL from email using proper MD5 hash
     const getGravatarUrl = (email: string, size: number): string => {
-        // Simple hash function for Gravatar (MD5 in browser)
-        const hash = Array.from(
-            new TextEncoder().encode(email.toLowerCase().trim())
-        ).reduce((hash, byte) => {
-            return ((hash << 5) - hash + byte) | 0;
-        }, 0).toString(16);
+        const hash = md5(email.toLowerCase().trim());
         return `https://www.gravatar.com/avatar/${hash}?s=${size * 2}&d=identicon`;
     };
 

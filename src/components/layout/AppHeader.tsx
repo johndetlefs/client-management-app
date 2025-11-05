@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { UserMenu } from '@/components/layout/UserMenu';
@@ -13,10 +13,23 @@ export function AppHeader() {
     const pathname = usePathname();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const avatarButtonRef = useRef<HTMLButtonElement>(null);
+
+    const toggleUserMenu = (e: React.MouseEvent | React.KeyboardEvent) => {
+        e.stopPropagation(); // Prevent event from bubbling to backdrop
+        setUserMenuOpen(!userMenuOpen);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleUserMenu(e);
+        }
+    };
 
     return (
         <>
-            <UserMenu isOpen={userMenuOpen} onClose={() => setUserMenuOpen(false)} />
+            <UserMenu isOpen={userMenuOpen} onClose={() => setUserMenuOpen(false)} triggerRef={avatarButtonRef} />
             <header className="sticky top-0 z-50 w-full border-b border-foreground/10 bg-background">
                 <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
                     {/* Logo */}
@@ -71,9 +84,12 @@ export function AppHeader() {
                         ))}
 
                         <button
-                            onClick={() => setUserMenuOpen(true)}
-                            className="ml-2 pl-2 border-l border-foreground/10 hover:opacity-80 transition-opacity"
-                            aria-label="Open user menu"
+                            ref={avatarButtonRef}
+                            onClick={toggleUserMenu}
+                            onKeyDown={handleKeyDown}
+                            className="ml-4 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:ring-offset-2 rounded-full"
+                            aria-label={userMenuOpen ? "Close user menu" : "Open user menu"}
+                            aria-expanded={userMenuOpen}
                         >
                             <Avatar
                                 email={user?.email || ''}
@@ -133,11 +149,13 @@ export function AppHeader() {
                             ))}
 
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     setMobileMenuOpen(false);
                                     setUserMenuOpen(true);
                                 }}
                                 className="pt-4 border-t border-foreground/10 flex items-center gap-3 hover:bg-foreground/5 rounded-lg p-3 -mx-3 transition-colors"
+                                aria-label="Open account menu"
                             >
                                 <Avatar
                                     email={user?.email || ''}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
@@ -9,39 +9,96 @@ import { ROUTES } from '@/lib/routes';
 interface UserMenuProps {
     isOpen: boolean;
     onClose: () => void;
+    triggerRef?: React.RefObject<HTMLElement | null>;
 }
 
-export function UserMenu({ isOpen, onClose }: UserMenuProps) {
+export function UserMenu({ isOpen, onClose, triggerRef }: UserMenuProps) {
     const { user, signOut } = useAuth();
     const router = useRouter();
     const menuRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    const handleClose = useCallback(() => {
+        onClose();
+        // Return focus to the trigger button after closing
+        setTimeout(() => {
+            triggerRef?.current?.focus();
+        }, 100);
+    }, [onClose, triggerRef]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                onClose();
+            const target = event.target as Node;
+
+            // Check if click is outside menu AND not on the trigger button
+            const isOutsideMenu = menuRef.current && !menuRef.current.contains(target);
+            const isNotTrigger = !triggerRef?.current || !triggerRef.current.contains(target);
+
+            if (isOutsideMenu && isNotTrigger) {
+                handleClose();
             }
         };
 
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
-                onClose();
+                handleClose();
+            }
+        };
+
+        // Focus trap: cycle focus within the drawer
+        const handleTab = (event: KeyboardEvent) => {
+            if (event.key !== 'Tab' || !isOpen) return;
+
+            const focusableElements = menuRef.current?.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            );
+
+            if (!focusableElements || focusableElements.length === 0) return;
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey) {
+                // Shift + Tab: moving backwards
+                if (document.activeElement === firstElement) {
+                    event.preventDefault();
+                    lastElement.focus();
+                }
+            } else {
+                // Tab: moving forwards
+                if (document.activeElement === lastElement) {
+                    event.preventDefault();
+                    firstElement.focus();
+                }
             }
         };
 
         if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
+            // Add a small delay before attaching click-outside handler
+            // This prevents the opening click from immediately closing the menu
+            const timeoutId = setTimeout(() => {
+                document.addEventListener('mousedown', handleClickOutside);
+            }, 100);
+
             document.addEventListener('keydown', handleEscape);
+            document.addEventListener('keydown', handleTab);
             // Prevent body scroll when menu is open
             document.body.style.overflow = 'hidden';
-        }
 
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-            document.removeEventListener('keydown', handleEscape);
-            document.body.style.overflow = 'unset';
-        };
-    }, [isOpen, onClose]);
+            // Focus the close button when drawer opens
+            setTimeout(() => {
+                closeButtonRef.current?.focus();
+            }, 100);
+
+            return () => {
+                clearTimeout(timeoutId);
+                document.removeEventListener('mousedown', handleClickOutside);
+                document.removeEventListener('keydown', handleEscape);
+                document.removeEventListener('keydown', handleTab);
+                document.body.style.overflow = 'unset';
+            };
+        }
+    }, [isOpen, handleClose, onClose, triggerRef]);
 
     const handleSignOut = async () => {
         await signOut();
@@ -60,23 +117,27 @@ export function UserMenu({ isOpen, onClose }: UserMenuProps) {
         <>
             {/* Backdrop */}
             <div
-                className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-40 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}
             />
 
             {/* Side Nav */}
             <div
                 ref={menuRef}
-                className={`fixed top-0 right-0 h-full w-80 bg-background border-l border-foreground/10 shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="user-menu-title"
+                className={`fixed top-0 right-0 h-full w-80 bg-background border-l border-foreground/10 shadow-xl z-[70] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
                     }`}
             >
                 <div className="flex flex-col h-full">
                     {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-foreground/10">
-                        <h2 className="text-lg font-semibold">Account</h2>
+                        <h2 id="user-menu-title" className="text-lg font-semibold">Account</h2>
                         <button
-                            onClick={onClose}
-                            className="p-2 hover:bg-foreground/5 rounded-lg transition-colors"
+                            ref={closeButtonRef}
+                            onClick={handleClose}
+                            className="p-2 hover:bg-foreground/5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
                             aria-label="Close menu"
                         >
                             <svg
@@ -122,7 +183,7 @@ export function UserMenu({ isOpen, onClose }: UserMenuProps) {
                         <nav className="flex flex-col gap-2">
                             <button
                                 onClick={handleUpdatePassword}
-                                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-foreground/5 transition-colors text-left"
+                                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-foreground/5 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
                             >
                                 <svg
                                     className="h-5 w-5 text-foreground/60"
@@ -147,7 +208,7 @@ export function UserMenu({ isOpen, onClose }: UserMenuProps) {
 
                             <button
                                 onClick={handleSignOut}
-                                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-foreground/5 transition-colors text-left text-red-600 dark:text-red-400"
+                                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-foreground/5 transition-colors text-left text-red-600 dark:text-red-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                             >
                                 <svg
                                     className="h-5 w-5"

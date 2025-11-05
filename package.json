@@ -15,12 +15,14 @@
   "dependencies": {
     "firebase": "^12.5.0",
     "firebase-admin": "^13.5.0",
+    "md5": "^2.3.0",
     "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/md5": "^2.3.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
