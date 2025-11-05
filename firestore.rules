@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user's tenant ID from their user document
+    function getUserTenantId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId;
+    }
+    
+    // Helper function to check if user belongs to the tenant
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && getUserTenantId() == tenantId;
+    }
+    
+    // Helper function to check if user has owner role
+    function isOwner(tenantId) {
+      return belongsToTenant(tenantId) && 
+             get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.role == 'owner';
+    }
+    
+    // User profile documents (top-level)
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Tenant-scoped data
+    match /tenants/{tenantId} {
+      // Tenant settings document
+      allow read: if belongsToTenant(tenantId);
+      allow write: if isOwner(tenantId);
+      
+      // Users within tenant
+      match /users/{userId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isOwner(tenantId);
+      }
+      
+      // Clients
+      match /clients/{clientId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if belongsToTenant(tenantId);
+      }
+      
+      // Jobs
+      match /jobs/{jobId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if belongsToTenant(tenantId);
+      }
+      
+      // Job items
+      match /jobItems/{itemId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if belongsToTenant(tenantId);
+      }
+      
+      // Invoices
+      match /invoices/{invoiceId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if belongsToTenant(tenantId);
+      }
+      
+      // Invoice counter (internal only)
+      match /counters/{counterId} {
+        allow read: if belongsToTenant(tenantId);
+        // Writes handled by server-side transactions only
+        allow write: if false;
+      }
+    }
+    
+    // Public invoice access (by token)
+    match /tenants/{tenantId}/invoices/{invoiceId} {
+      allow read: if resource.data.publicToken == request.query.token;
+    }
+    
+    // Deny all other access by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

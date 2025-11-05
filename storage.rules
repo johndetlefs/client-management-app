@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user's tenant ID
+    function getUserTenantId() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.tenantId;
+    }
+    
+    // Helper function to check if user belongs to the tenant
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && getUserTenantId() == tenantId;
+    }
+    
+    // Helper function to check if user has owner role
+    function isOwner(tenantId) {
+      return belongsToTenant(tenantId) && 
+             firestore.get(/databases/(default)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.role == 'owner';
+    }
+    
+    // Tenant logos (owners only)
+    match /tenants/{tenantId}/logo/{fileName} {
+      allow read: if belongsToTenant(tenantId);
+      allow write: if isOwner(tenantId);
+    }
+    
+    // Invoice attachments (tenant members)
+    match /tenants/{tenantId}/invoices/{invoiceId}/{fileName} {
+      allow read: if belongsToTenant(tenantId);
+      allow write: if belongsToTenant(tenantId);
+    }
+    
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
