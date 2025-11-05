@@ -75,6 +75,7 @@ export interface Invoice {
   // Client snapshot (denormalized for display)
   clientName: string;
   clientEmail?: string;
+  clientAbn?: string; // Australian Business Number
   clientAddress?: {
     street?: string;
     city?: string;

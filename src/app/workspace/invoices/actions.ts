@@ -77,6 +77,9 @@ export async function createDraftInvoice(
     if (client.email) {
       invoiceData.clientEmail = client.email;
     }
+    if (client.abn) {
+      invoiceData.clientAbn = client.abn;
+    }
     if (client.address) {
       invoiceData.clientAddress = client.address;
     }

@@ -245,6 +245,9 @@ export default function InvoiceDetailPage() {
                                 {invoice.clientAddress.country && <p>{invoice.clientAddress.country}</p>}
                             </div>
                         )}
+                        {invoice.clientAbn && (
+                            <p className="text-sm text-gray-600 mt-2">ABN: {invoice.clientAbn}</p>
+                        )}
                     </div>
                     <div className="text-right">
                         {invoice.issueDate && invoice.issueDate instanceof Date && (
@@ -334,7 +337,7 @@ export default function InvoiceDetailPage() {
 
                 {/* Totals */}
                 {invoice.lines.length > 0 && (
-                    <div className="mt-6 pt-6 border-t">
+                    <div className="mt-6 pt-6">
                         <div className="max-w-sm ml-auto space-y-2">
                             <div className="flex justify-between">
                                 <span>Subtotal:</span>
@@ -377,6 +380,12 @@ export default function InvoiceDetailPage() {
 
             {/* Actions */}
             <div className="flex gap-3 justify-end">
+                <Button
+                    variant="secondary"
+                    onClick={() => window.open(`/workspace/invoices/${invoice.id}/print`, '_blank')}
+                >
+                    Preview / Print
+                </Button>
                 {canDelete && (
                     <Button variant="secondary" onClick={handleDeleteDraft} disabled={processing}>
                         Delete Draft

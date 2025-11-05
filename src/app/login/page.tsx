@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { ConditionallyPublicRoute } from '@/components/auth/ConditionallyPublicRoute';
+import { Header } from '@/components/layout/Header';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
@@ -38,6 +39,7 @@ export default function LoginPage() {
 
     return (
         <ConditionallyPublicRoute>
+            <Header />
             <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black px-4">
                 <Card className="w-full max-w-md">
                     <CardHeader>

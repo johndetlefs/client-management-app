@@ -21,7 +21,7 @@ export const WORKSPACE_ROUTES = {
   CLIENTS: "/workspace/clients",
   JOBS: "/workspace/jobs", // Future
   INVOICES: "/workspace/invoices", // Future
-  SETTINGS: "/workspace/settings", // Future
+  SETTINGS: "/workspace/settings",
 } as const;
 
 /**

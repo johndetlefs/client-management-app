@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
+      <Header />
       {/* Hero Section */}
       <section className="flex-1 flex items-center justify-center px-4 py-20 md:py-32">
         <div className="container max-w-5xl mx-auto text-center">

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { getCurrentUserTenantId } from '@/lib/tenant';
+import { getTenantSettings } from '@/app/workspace/settings/actions';
 import { getJobItems, createJobItem, updateJobItem, deleteJobItem } from '@/app/workspace/jobs/itemActions';
 import type { JobItem, BillableUnit, JobItemFormData } from '@/types/jobItem';
 import { computeLineSubtotal, computeTaxAmount, formatMinorUnits, getBillableUnitLabel } from '@/types/jobItem';
@@ -17,10 +18,12 @@ interface JobItemsListProps {
 
 export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     const { user } = useAuth();
+    const { tenantId } = useWorkspace();
     const [jobItems, setJobItems] = useState<JobItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [defaultTaxRate, setDefaultTaxRate] = useState<number>(10); // Default to 10%
 
     // Job item form state
     const [showItemForm, setShowItemForm] = useState(false);
@@ -30,22 +33,31 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     const [itemUnit, setItemUnit] = useState<BillableUnit>('hour');
     const [itemQuantity, setItemQuantity] = useState('');
     const [itemUnitPrice, setItemUnitPrice] = useState('');
-    const [itemTaxRate, setItemTaxRate] = useState('10');
+    const [itemTaxRate, setItemTaxRate] = useState('');
     const [itemFormError, setItemFormError] = useState<string | null>(null);
     const [itemSaving, setItemSaving] = useState(false);
+
+    // Load tenant settings to get default tax rate
+    useEffect(() => {
+        async function loadSettings() {
+            const result = await getTenantSettings(tenantId);
+            if (result.success && result.data?.tax?.defaultRate) {
+                const rate = result.data.tax.defaultRate * 100;
+                setDefaultTaxRate(rate);
+                // Only set initial form value if not editing
+                if (!editingItemId && !showItemForm) {
+                    setItemTaxRate(rate.toString());
+                }
+            }
+        }
+        loadSettings();
+    }, [tenantId, editingItemId, showItemForm]);
 
     // Load job items
     useEffect(() => {
         const loadJobItems = async () => {
             setLoading(true);
             setError(null);
-
-            const tenantId = await getCurrentUserTenantId();
-            if (!tenantId) {
-                setError('Unable to determine your tenant.');
-                setLoading(false);
-                return;
-            }
 
             const result = await getJobItems(tenantId, jobId);
             if (result.success) {
@@ -57,7 +69,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
         };
 
         loadJobItems();
-    }, [jobId, refreshTrigger]);
+    }, [jobId, tenantId, refreshTrigger]);
 
     const resetForm = () => {
         setItemTitle('');
@@ -65,7 +77,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
         setItemUnit('hour');
         setItemQuantity('');
         setItemUnitPrice('');
-        setItemTaxRate('10');
+        setItemTaxRate(defaultTaxRate.toString());
         setItemFormError(null);
         setEditingItemId(null);
         setShowItemForm(false);
@@ -114,9 +126,8 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
             return;
         }
 
-        const tenantId = await getCurrentUserTenantId();
-        if (!tenantId || !user) {
-            setItemFormError('Unable to determine your tenant.');
+        if (!user) {
+            setItemFormError('User not authenticated.');
             setItemSaving(false);
             return;
         }
@@ -154,12 +165,6 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
             return;
         }
 
-        const tenantId = await getCurrentUserTenantId();
-        if (!tenantId) {
-            alert('Unable to determine your tenant.');
-            return;
-        }
-
         const result = await deleteJobItem(tenantId, itemId);
         if (result.success) {
             setRefreshTrigger(prev => prev + 1);
@@ -187,7 +192,13 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                 <div className="flex items-center justify-between">
                     <CardTitle>Billable Items</CardTitle>
                     {!showItemForm && (
-                        <Button onClick={() => setShowItemForm(true)} className="text-sm">
+                        <Button
+                            onClick={() => {
+                                setItemTaxRate(defaultTaxRate.toString());
+                                setShowItemForm(true);
+                            }}
+                            className="text-sm"
+                        >
                             + Add Item
                         </Button>
                     )}

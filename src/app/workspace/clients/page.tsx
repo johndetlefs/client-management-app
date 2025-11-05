@@ -4,19 +4,18 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { getCurrentUserTenantId } from '@/lib/tenant';
 import { getClients, deleteClient } from './actions';
 import { CLIENT_ROUTES } from '@/lib/routes';
 import type { Client } from '@/types/client';
 
 export default function ClientsPage() {
     const router = useRouter();
-    const { loading: authLoading } = useAuth();
+    const { tenantId } = useWorkspace();
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -37,19 +36,9 @@ export default function ClientsPage() {
 
     // Load clients on mount and when refreshTrigger changes
     useEffect(() => {
-        // Wait for auth to be ready
-        if (authLoading) return;
-
         const loadClients = async () => {
             setLoading(true);
             setError(null);
-
-            const tenantId = await getCurrentUserTenantId();
-            if (!tenantId) {
-                setError('Unable to determine your tenant. Please contact support.');
-                setLoading(false);
-                return;
-            }
 
             const result = await getClients(tenantId);
             if (result.success) {
@@ -61,16 +50,10 @@ export default function ClientsPage() {
         };
 
         loadClients();
-    }, [refreshTrigger, authLoading]);
+    }, [refreshTrigger, tenantId]);
 
     const handleDelete = async (clientId: string, clientName: string) => {
         if (!confirm(`Are you sure you want to delete ${clientName}? This action cannot be undone.`)) {
-            return;
-        }
-
-        const tenantId = await getCurrentUserTenantId();
-        if (!tenantId) {
-            alert('Unable to determine your tenant.');
             return;
         }
 
