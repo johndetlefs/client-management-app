@@ -4,9 +4,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { getCurrentUserTenantId } from '@/lib/tenant';
 import { getJobs, deleteJob, archiveJob } from './actions';
@@ -15,6 +16,7 @@ import type { JobWithClient, JobStatus } from '@/types/job';
 
 export default function JobsPage() {
     const router = useRouter();
+    const { loading: authLoading } = useAuth();
     const [jobs, setJobs] = useState<JobWithClient[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -47,6 +49,9 @@ export default function JobsPage() {
 
     // Load jobs on mount and when refreshTrigger changes
     useEffect(() => {
+        // Wait for auth to be ready
+        if (authLoading) return;
+
         const loadJobs = async () => {
             setLoading(true);
             setError(null);
@@ -68,7 +73,7 @@ export default function JobsPage() {
         };
 
         loadJobs();
-    }, [refreshTrigger]);
+    }, [refreshTrigger, authLoading]);
 
     const handleDelete = async (jobId: string, jobTitle: string) => {
         if (!confirm(`Are you sure you want to delete "${jobTitle}"? This action cannot be undone.`)) {
@@ -217,94 +222,116 @@ export default function JobsPage() {
 
                     {/* Jobs List */}
                     {!loading && !error && filteredJobs.length > 0 && (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {filteredJobs.map((job) => (
-                                <Card key={job.id} className="hover:shadow-lg transition-shadow">
-                                    <CardHeader>
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex-1 min-w-0">
-                                                <CardTitle className="text-lg truncate">
-                                                    {job.title}
-                                                </CardTitle>
-                                                <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full mt-2 ${getStatusColor(job.status)}`}>
-                                                    {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-2 text-sm mb-4">
-                                            <div className="flex items-center text-zinc-600 dark:text-zinc-400">
-                                                <span className="font-medium mr-2">Client:</span>
-                                                <Link
-                                                    href={CLIENT_ROUTES.VIEW(job.clientId)}
-                                                    className="text-blue-600 dark:text-blue-400 hover:underline truncate"
-                                                >
-                                                    {job.clientName}
-                                                </Link>
-                                            </div>
-                                            {job.reference && (
-                                                <div className="flex items-center text-zinc-600 dark:text-zinc-400">
-                                                    <span className="font-medium mr-2">Ref:</span>
-                                                    <span className="truncate">{job.reference}</span>
-                                                </div>
-                                            )}
-                                            {job.startDate && (
-                                                <div className="flex items-center text-zinc-600 dark:text-zinc-400">
-                                                    <span className="font-medium mr-2">Start:</span>
-                                                    <span>{formatDate(job.startDate as Date)}</span>
-                                                </div>
-                                            )}
-                                            {job.endDate && (
-                                                <div className="flex items-center text-zinc-600 dark:text-zinc-400">
-                                                    <span className="font-medium mr-2">End:</span>
-                                                    <span>{formatDate(job.endDate as Date)}</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <Link
-                                                href={JOB_ROUTES.VIEW(job.id)}
-                                                className="flex-1"
+                        <Card>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Job Title
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Client
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Reference
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Start Date
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                End Date
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Status
+                                            </th>
+                                            <th className="text-right py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredJobs.map((job) => (
+                                            <tr
+                                                key={job.id}
+                                                className="border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors"
                                             >
-                                                <Button variant="secondary" className="w-full">
-                                                    View
-                                                </Button>
-                                            </Link>
-                                            <Link
-                                                href={JOB_ROUTES.EDIT(job.id)}
-                                                className="flex-1"
-                                            >
-                                                <Button variant="secondary" className="w-full">
-                                                    Edit
-                                                </Button>
-                                            </Link>
-                                            {job.status !== 'archived' && (
-                                                <Button
-                                                    variant="secondary"
-                                                    onClick={() => handleArchive(job.id, job.title)}
-                                                    className="px-3"
-                                                    aria-label="Archive job"
-                                                    title="Archive"
-                                                >
-                                                    📦
-                                                </Button>
-                                            )}
-                                            <Button
-                                                variant="secondary"
-                                                onClick={() => handleDelete(job.id, job.title)}
-                                                className="px-3"
-                                                aria-label="Delete job"
-                                                title="Delete"
-                                            >
-                                                🗑️
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
+                                                <td className="py-3 px-4">
+                                                    <Link
+                                                        href={JOB_ROUTES.VIEW(job.id)}
+                                                        className="font-medium text-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                                                    >
+                                                        {job.title}
+                                                    </Link>
+                                                </td>
+                                                <td className="py-3 px-4 text-sm">
+                                                    <Link
+                                                        href={CLIENT_ROUTES.VIEW(job.clientId)}
+                                                        className="text-blue-600 dark:text-blue-400 hover:underline"
+                                                    >
+                                                        {job.clientName}
+                                                    </Link>
+                                                </td>
+                                                <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {job.reference || '—'}
+                                                </td>
+                                                <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {formatDate(job.startDate as Date)}
+                                                </td>
+                                                <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {formatDate(job.endDate as Date)}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(job.status)}`}>
+                                                        {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Link href={JOB_ROUTES.VIEW(job.id)}>
+                                                            <Button
+                                                                variant="icon"
+                                                                aria-label="View job"
+                                                                title="View"
+                                                            >
+                                                                👁️
+                                                            </Button>
+                                                        </Link>
+                                                        <Link href={JOB_ROUTES.EDIT(job.id)}>
+                                                            <Button
+                                                                variant="icon"
+                                                                aria-label="Edit job"
+                                                                title="Edit"
+                                                            >
+                                                                ✏️
+                                                            </Button>
+                                                        </Link>
+                                                        {job.status !== 'archived' && (
+                                                            <Button
+                                                                variant="icon"
+                                                                onClick={() => handleArchive(job.id, job.title)}
+                                                                aria-label="Archive job"
+                                                                title="Archive"
+                                                            >
+                                                                📦
+                                                            </Button>
+                                                        )}
+                                                        <Button
+                                                            variant="icon"
+                                                            onClick={() => handleDelete(job.id, job.title)}
+                                                            aria-label="Delete job"
+                                                            title="Delete"
+                                                        >
+                                                            🗑️
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
                     )}
 
                     {/* Results Count */}

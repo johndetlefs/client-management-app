@@ -1,7 +1,7 @@
 import React, { ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'ghost';
+    variant?: 'primary' | 'secondary' | 'ghost' | 'icon';
     loading?: boolean;
 }
 
@@ -14,14 +14,15 @@ export function Button({
     ...props
 }: ButtonProps) {
     const baseStyles =
-        'px-6 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+        'rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variants = {
         primary:
-            'bg-foreground text-background hover:bg-foreground/90 focus:ring-foreground',
+            'px-6 py-2 bg-foreground text-background hover:bg-foreground/90 focus:ring-foreground',
         secondary:
-            'border border-foreground/20 text-foreground hover:bg-foreground/5 focus:ring-foreground/20',
-        ghost: 'text-foreground hover:bg-foreground/5 focus:ring-foreground/20',
+            'px-6 py-2 border border-foreground/20 text-foreground hover:bg-foreground/5 focus:ring-foreground/20',
+        ghost: 'px-6 py-2 text-foreground hover:bg-foreground/5 focus:ring-foreground/20',
+        icon: 'p-2 border border-foreground/20 text-foreground hover:bg-foreground/5 focus:ring-foreground/20',
     };
 
     return (

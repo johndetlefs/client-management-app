@@ -4,9 +4,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { getCurrentUserTenantId } from '@/lib/tenant';
 import { getClients, deleteClient } from './actions';
@@ -15,6 +16,7 @@ import type { Client } from '@/types/client';
 
 export default function ClientsPage() {
     const router = useRouter();
+    const { loading: authLoading } = useAuth();
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +37,9 @@ export default function ClientsPage() {
 
     // Load clients on mount and when refreshTrigger changes
     useEffect(() => {
+        // Wait for auth to be ready
+        if (authLoading) return;
+
         const loadClients = async () => {
             setLoading(true);
             setError(null);
@@ -56,7 +61,7 @@ export default function ClientsPage() {
         };
 
         loadClients();
-    }, [refreshTrigger]);
+    }, [refreshTrigger, authLoading]);
 
     const handleDelete = async (clientId: string, clientName: string) => {
         if (!confirm(`Are you sure you want to delete ${clientName}? This action cannot be undone.`)) {
@@ -151,71 +156,98 @@ export default function ClientsPage() {
 
                     {/* Clients List */}
                     {!loading && !error && filteredClients.length > 0 && (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {filteredClients.map((client) => (
-                                <Card key={client.id} className="hover:shadow-lg transition-shadow">
-                                    <CardHeader>
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1 min-w-0">
-                                                <CardTitle className="text-lg truncate">
-                                                    {client.name}
-                                                </CardTitle>
-                                                {!client.isActive && (
-                                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 mt-1">
-                                                        Inactive
+                        <Card>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Name
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Email
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Phone
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                ABN
+                                            </th>
+                                            <th className="text-left py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Status
+                                            </th>
+                                            <th className="text-right py-3 px-4 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredClients.map((client) => (
+                                            <tr
+                                                key={client.id}
+                                                className="border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors"
+                                            >
+                                                <td className="py-3 px-4">
+                                                    <Link
+                                                        href={CLIENT_ROUTES.VIEW(client.id)}
+                                                        className="font-medium text-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                                                    >
+                                                        {client.name}
+                                                    </Link>
+                                                </td>
+                                                <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {client.email || '—'}
+                                                </td>
+                                                <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {client.phone || '—'}
+                                                </td>
+                                                <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {client.abn || '—'}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${client.isActive
+                                                            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                                                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                                        }`}>
+                                                        {client.isActive ? 'Active' : 'Inactive'}
                                                     </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-2 text-sm mb-4">
-                                            {client.email && (
-                                                <div className="flex items-center text-zinc-600 dark:text-zinc-400">
-                                                    <span className="truncate">{client.email}</span>
-                                                </div>
-                                            )}
-                                            {client.phone && (
-                                                <div className="flex items-center text-zinc-600 dark:text-zinc-400">
-                                                    <span>{client.phone}</span>
-                                                </div>
-                                            )}
-                                            {client.abn && (
-                                                <div className="flex items-center text-zinc-600 dark:text-zinc-400">
-                                                    <span className="text-xs">ABN: {client.abn}</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <Link
-                                                href={CLIENT_ROUTES.VIEW(client.id)}
-                                                className="flex-1"
-                                            >
-                                                <Button variant="secondary" className="w-full">
-                                                    View
-                                                </Button>
-                                            </Link>
-                                            <Link
-                                                href={CLIENT_ROUTES.EDIT(client.id)}
-                                                className="flex-1"
-                                            >
-                                                <Button variant="secondary" className="w-full">
-                                                    Edit
-                                                </Button>
-                                            </Link>
-                                            <Button
-                                                variant="secondary"
-                                                onClick={() => handleDelete(client.id, client.name)}
-                                                className="px-3"
-                                            >
-                                                🗑️
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Link href={CLIENT_ROUTES.VIEW(client.id)}>
+                                                            <Button
+                                                                variant="icon"
+                                                                aria-label="View client"
+                                                                title="View"
+                                                            >
+                                                                👁️
+                                                            </Button>
+                                                        </Link>
+                                                        <Link href={CLIENT_ROUTES.EDIT(client.id)}>
+                                                            <Button
+                                                                variant="icon"
+                                                                aria-label="Edit client"
+                                                                title="Edit"
+                                                            >
+                                                                ✏️
+                                                            </Button>
+                                                        </Link>
+                                                        <Button
+                                                            variant="icon"
+                                                            onClick={() => handleDelete(client.id, client.name)}
+                                                            aria-label="Delete client"
+                                                            title="Delete"
+                                                        >
+                                                            🗑️
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
                     )}
 
                     {/* Results Count */}
