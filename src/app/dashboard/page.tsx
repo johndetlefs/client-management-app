@@ -4,30 +4,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
-import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
-    const { user, signOut } = useAuth();
-    const router = useRouter();
-
-    const handleSignOut = async () => {
-        await signOut();
-        router.push('/login');
-    };
+    const { user } = useAuth();
 
     return (
         <ProtectedRoute>
             <div className="min-h-screen bg-zinc-50 dark:bg-black">
-                {/* Header */}
-                <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-                        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-                        <Button onClick={handleSignOut} variant="ghost">
-                            Sign Out
-                        </Button>
-                    </div>
-                </header>
-
                 {/* Main Content */}
                 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
