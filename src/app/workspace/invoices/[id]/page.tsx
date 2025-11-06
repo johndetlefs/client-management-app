@@ -372,12 +372,30 @@ export default function InvoiceDetailPage() {
                                 <span>Subtotal:</span>
                                 <span className="font-medium">{formatCurrency(invoice.subtotalMinor)}</span>
                             </div>
-                            {invoice.taxBreakdown.map((tax, idx) => (
-                                <div key={idx} className="flex justify-between text-sm">
-                                    <span>Tax ({formatTaxRate(tax.rate)}):</span>
-                                    <span>{formatCurrency(tax.taxMinor)}</span>
+
+                            {/* Always show tax line, even if $0 */}
+                            {invoice.taxBreakdown.length > 0 ? (
+                                invoice.taxBreakdown.map((tax, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm">
+                                        <span>
+                                            {settings?.tax?.taxType && settings.tax.taxType !== 'None'
+                                                ? `${settings.tax.taxType} (${formatTaxRate(tax.rate)})`
+                                                : `Tax (${formatTaxRate(tax.rate)})`}:
+                                        </span>
+                                        <span>{formatCurrency(tax.taxMinor)}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex justify-between text-sm">
+                                    <span>
+                                        {settings?.tax?.taxType && settings.tax.taxType !== 'None'
+                                            ? `${settings.tax.taxType}`
+                                            : 'Tax'}:
+                                    </span>
+                                    <span>{formatCurrency(0)}</span>
                                 </div>
-                            ))}
+                            )}
+
                             <div className="flex justify-between text-lg font-bold pt-2 border-t">
                                 <span>Total:</span>
                                 <span>{formatCurrency(invoice.totalMinor)}</span>
