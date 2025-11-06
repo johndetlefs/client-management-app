@@ -314,7 +314,7 @@ export default function InvoiceDetailPage() {
                             </thead>
                             <tbody>
                                 {invoice.lines.map((line) => (
-                                    <tr key={line.jobItemId} className="border-b">
+                                    <tr key={line.jobItemId} className="border-b border-foreground/20">
                                         <td className="py-4 px-2">
                                             <p className="font-medium">{line.title}</p>
                                             {line.description && <p className="text-sm text-gray-600">{line.description}</p>}

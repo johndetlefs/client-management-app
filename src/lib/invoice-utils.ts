@@ -67,7 +67,7 @@ export function computeInvoiceTotals(
     subtotalMinor += line.subtotalMinor;
     taxMinor += line.taxMinor;
 
-    // Track taxable amounts (items with GST applicable)
+    // Track taxable amounts (items with tax applicable)
     if (line.gstApplicable) {
       taxableAmountMinor += line.subtotalMinor;
     }

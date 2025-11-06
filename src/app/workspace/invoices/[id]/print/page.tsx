@@ -288,7 +288,7 @@ export default function InvoicePrintPage() {
                         </thead>
                         <tbody>
                             {invoice.lines.map((line, index) => (
-                                <tr key={index} className="border-b border-foreground/10">
+                                <tr key={index} className="border-b border-foreground/20">
                                     <td className="py-4 px-2">
                                         <p className="font-medium">{line.title}</p>
                                         {line.description && (
@@ -330,16 +330,28 @@ export default function InvoicePrintPage() {
                             <span className="font-semibold">{formatCurrency(invoice.subtotalMinor)}</span>
                         </div>
 
-                        {invoice.taxBreakdown.map((tax, idx) => (
-                            <div key={idx} className="flex justify-between py-2 border-b border-foreground/10">
+                        {/* Always show tax line, even if $0 */}
+                        {invoice.taxBreakdown.length > 0 ? (
+                            invoice.taxBreakdown.map((tax, idx) => (
+                                <div key={idx} className="flex justify-between py-2 border-b border-foreground/10">
+                                    <span className="font-medium">
+                                        {settings?.tax?.taxType && settings.tax.taxType !== 'None'
+                                            ? `${settings.tax.taxType} (${formatTaxRate(tax.rate)})`
+                                            : `Tax (${formatTaxRate(tax.rate)})`}
+                                    </span>
+                                    <span className="font-semibold">{formatCurrency(tax.taxMinor)}</span>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="flex justify-between py-2 border-b border-foreground/10">
                                 <span className="font-medium">
                                     {settings?.tax?.taxType && settings.tax.taxType !== 'None'
-                                        ? `${settings.tax.taxType} (${formatTaxRate(tax.rate)})`
-                                        : `Tax (${formatTaxRate(tax.rate)})`}
+                                        ? settings.tax.taxType
+                                        : 'Tax'}
                                 </span>
-                                <span className="font-semibold">{formatCurrency(tax.taxMinor)}</span>
+                                <span className="font-semibold">{formatCurrency(0)}</span>
                             </div>
-                        ))}
+                        )}
 
                         <div className="flex justify-between py-3 border-t-2 border-foreground/20 mt-2">
                             <span className="text-xl font-bold">Total</span>

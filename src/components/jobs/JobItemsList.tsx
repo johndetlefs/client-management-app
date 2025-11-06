@@ -24,6 +24,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     const [error, setError] = useState<string | null>(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [defaultTaxRate, setDefaultTaxRate] = useState<number>(0.10); // Default to 10% (0.10)
+    const [taxType, setTaxType] = useState<string>('Tax'); // Default to 'Tax'
 
     // Job item form state
     const [showItemForm, setShowItemForm] = useState(false);
@@ -37,12 +38,15 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     const [itemFormError, setItemFormError] = useState<string | null>(null);
     const [itemSaving, setItemSaving] = useState(false);
 
-    // Load tenant settings to get default tax rate
+    // Load tenant settings to get default tax rate and tax type
     useEffect(() => {
         async function loadSettings() {
             const result = await getTenantSettings(tenantId);
             if (result.success && result.data?.tax?.defaultRate) {
                 setDefaultTaxRate(result.data.tax.defaultRate);
+            }
+            if (result.success && result.data?.tax?.taxType && result.data.tax.taxType !== 'None') {
+                setTaxType(result.data.tax.taxType);
             }
         }
         loadSettings();
@@ -302,7 +306,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
 
                                 <div>
                                     <label htmlFor="itemGstApplicable" className="block text-sm font-medium text-foreground mb-2">
-                                        GST Applicable
+                                        {taxType} Applicable
                                     </label>
                                     <div className="flex items-center h-10">
                                         <input
@@ -313,7 +317,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                             className="w-5 h-5 text-blue-600 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 rounded focus:ring-2 focus:ring-blue-500"
                                         />
                                         <span className="ml-2 text-sm text-zinc-600 dark:text-zinc-400">
-                                            Apply GST to this item
+                                            Apply {taxType.toLowerCase()} to this item
                                         </span>
                                     </div>
                                 </div>
@@ -361,7 +365,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                                     {item.quantity} × {formatMinorUnits(item.unitPriceMinor)} / {getBillableUnitLabel(item.unit, 1)}
                                                 </span>
                                                 {(item.gstApplicable ?? true) && (
-                                                    <span>GST applicable</span>
+                                                    <span>{taxType} applicable</span>
                                                 )}
                                                 <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-zinc-100 dark:bg-zinc-800">
                                                     {item.status}
@@ -377,7 +381,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                             </div>
                                             {tax > 0 && (
                                                 <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                                                    GST: {formatMinorUnits(tax)}
+                                                    {taxType}: {formatMinorUnits(tax)}
                                                 </div>
                                             )}
                                         </div>
