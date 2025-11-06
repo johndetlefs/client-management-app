@@ -124,12 +124,35 @@ export async function getOpenJobItemsForClient(
     // Fetch job titles
     const jobIds = new Set<string>();
     const items: JobItem[] = [];
+    const itemsToCleanup: string[] = [];
 
     itemsSnap.forEach((doc) => {
       const item = { id: doc.id, ...doc.data() } as JobItem;
+      // If an item is "open" but has a lock, it's stale data - mark for cleanup
+      if (item.lock) {
+        itemsToCleanup.push(item.id);
+      }
       items.push(item);
       jobIds.add(item.jobId);
     });
+
+    // Clean up any stale locks (open items shouldn't have locks)
+    if (itemsToCleanup.length > 0) {
+      const batch = adminDb.batch();
+      itemsToCleanup.forEach((itemId) => {
+        const itemRef = adminDb
+          .collection(`tenants/${tenantId}/jobItems`)
+          .doc(itemId);
+        batch.update(itemRef, {
+          lock: FieldValue.delete(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+      await batch.commit();
+      console.log(
+        `[getOpenJobItemsForClient] Cleaned up ${itemsToCleanup.length} stale locks`
+      );
+    }
 
     // Fetch jobs to get titles
     const jobTitles = new Map<string, string>();
@@ -156,8 +179,12 @@ export async function getOpenJobItemsForClient(
           ? item.updatedAt
           : timestampToDate(item.updatedAt) || new Date();
 
+      // Omit lock field for open items (they shouldn't have locks)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { lock: _lock, ...itemWithoutLock } = item;
+
       return {
-        ...item,
+        ...itemWithoutLock,
         jobTitle: jobTitles.get(item.jobId) || "Unknown Job",
         createdAt,
         updatedAt,
@@ -226,6 +253,13 @@ export async function addItemsToInvoice(
 
         const item = { id: itemSnap.id, ...itemSnap.data() } as JobItem;
 
+        // Debug logging
+        console.log(`[addItemsToInvoice] Validating item "${item.title}":`, {
+          status: item.status,
+          hasLock: !!item.lock,
+          lock: item.lock,
+        });
+
         // Validate item is open and not locked
         if (item.status !== "open") {
           throw new Error(
@@ -233,7 +267,8 @@ export async function addItemsToInvoice(
           );
         }
 
-        if (item.lock) {
+        // Check if item has a valid lock (lock exists and has required fields)
+        if (item.lock && item.lock.invoiceId && item.lock.at) {
           throw new Error(
             `Job item "${item.title}" is already locked to another invoice`
           );
@@ -378,11 +413,16 @@ export async function removeItemFromInvoice(
       const itemRef = adminDb
         .collection(`tenants/${tenantId}/jobItems`)
         .doc(jobItemId);
-      transaction.update(itemRef, {
-        status: "open" as ItemStatus,
-        lock: FieldValue.delete(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      const itemSnap = await transaction.get(itemRef);
+
+      // Only update if item exists
+      if (itemSnap.exists) {
+        transaction.update(itemRef, {
+          status: "open" as ItemStatus,
+          lock: FieldValue.delete(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
     });
 
     return { success: true, data: undefined };
@@ -679,15 +719,26 @@ export async function voidInvoice(
       });
 
       // Unlock all locked job items, regardless of invoice status
+      console.log(
+        `[voidInvoice] Unlocking ${invoice.lockedJobItemIds.length} items`
+      );
       for (const jobItemId of invoice.lockedJobItemIds) {
         const itemRef = adminDb
           .collection(`tenants/${tenantId}/jobItems`)
           .doc(jobItemId);
-        transaction.update(itemRef, {
-          status: "open" as ItemStatus,
-          lock: FieldValue.delete(),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+        const itemSnap = await transaction.get(itemRef);
+
+        // Only update if item exists
+        if (itemSnap.exists) {
+          console.log(`[voidInvoice] Unlocking item ${jobItemId}`);
+          transaction.update(itemRef, {
+            status: "open" as ItemStatus,
+            lock: FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          console.warn(`[voidInvoice] Item ${jobItemId} not found, skipping`);
+        }
       }
     });
 
@@ -730,11 +781,16 @@ export async function deleteDraftInvoice(
         const itemRef = adminDb
           .collection(`tenants/${tenantId}/jobItems`)
           .doc(jobItemId);
-        transaction.update(itemRef, {
-          status: "open" as ItemStatus,
-          lock: FieldValue.delete(),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+        const itemSnap = await transaction.get(itemRef);
+
+        // Only update if item exists
+        if (itemSnap.exists) {
+          transaction.update(itemRef, {
+            status: "open" as ItemStatus,
+            lock: FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
       }
 
       // Delete invoice
