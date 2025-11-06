@@ -61,16 +61,42 @@ export default function InvoicePrintPage() {
     return (
         <>
             <style jsx global>{`
+                /* Base styles for print page */
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    background: #ffffff !important;
+                    background-color: #ffffff !important;
+                }
+
                 /* Hide header and main wrapper on print page */
                 header {
                     display: none !important;
                 }
 
-                body {
-                    background: white !important;
-                }
-
                 @media print {
+                    * {
+                        box-shadow: none !important;
+                        -webkit-box-shadow: none !important;
+                        border-left: none !important;
+                        border-right: none !important;
+                    }
+
+                    html, body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                        background-color: #ffffff !important;
+                        width: 100% !important;
+                        overflow-x: hidden !important;
+                    }
+
+                    /* Override CSS variables for print */
+                    html {
+                        --background: #ffffff !important;
+                        --foreground: #000000 !important;
+                    }
+
                     @page {
                         margin: 0.5in;
                         size: A4;
@@ -87,6 +113,19 @@ export default function InvoicePrintPage() {
 
                     .page-break {
                         page-break-after: always;
+                    }
+
+                    /* Remove all shadows and ensure full width */
+                    .invoice-container {
+                        box-shadow: none !important;
+                        -webkit-box-shadow: none !important;
+                        margin: 0 !important;
+                        padding: 1rem !important;
+                        max-width: 100% !important;
+                        width: 100% !important;
+                        background: #ffffff !important;
+                        background-color: #ffffff !important;
+                        border: none !important;
                     }
 
                     /* Pagination improvements */
@@ -126,6 +165,7 @@ export default function InvoicePrintPage() {
                         max-width: 210mm;
                         margin: 0 auto;
                         background: white;
+                        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
                         min-height: 297mm;
                     }
                 }
