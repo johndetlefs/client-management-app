@@ -29,6 +29,7 @@ export default function ClientEditPage() {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [abn, setAbn] = useState('');
+    const [shortcode, setShortcode] = useState('');
     const [isActive, setIsActive] = useState(true);
     const [notes, setNotes] = useState('');
 
@@ -63,6 +64,7 @@ export default function ClientEditPage() {
                 setEmail(client.email || '');
                 setPhone(client.phone || '');
                 setAbn(client.abn || '');
+                setShortcode(client.shortcode || '');
                 setIsActive(client.isActive);
                 setNotes(client.notes || '');
 
@@ -109,6 +111,7 @@ export default function ClientEditPage() {
             email: email.trim() || undefined,
             phone: phone.trim() || undefined,
             abn: abn.trim() || undefined,
+            shortcode: shortcode.trim() || undefined,
             isActive,
             notes: notes.trim() || undefined,
             address: (street || city || state || postcode) ? {
@@ -263,6 +266,28 @@ export default function ClientEditPage() {
                                         onChange={(e) => setAbn(e.target.value)}
                                         placeholder="12 345 678 901"
                                     />
+                                </div>
+
+                                <div>
+                                    <label htmlFor="shortcode" className="block text-sm font-medium text-foreground mb-2">
+                                        Invoice Shortcode
+                                    </label>
+                                    <Input
+                                        id="shortcode"
+                                        type="text"
+                                        value={shortcode}
+                                        onChange={(e) => {
+                                            const value = e.target.value.toUpperCase().slice(0, 4);
+                                            setShortcode(value);
+                                        }}
+                                        placeholder="QNTS"
+                                        maxLength={4}
+                                        pattern="[A-Z]{4}"
+                                        className="uppercase"
+                                    />
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                                        4 uppercase letters used as invoice prefix (e.g., QNTS-5TU72)
+                                    </p>
                                 </div>
 
                                 <div className="flex items-center gap-2">

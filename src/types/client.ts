@@ -34,6 +34,7 @@ export interface Client {
   email?: string;
   phone?: string;
   abn?: string; // Australian Business Number
+  shortcode?: string; // 4-letter code for invoice prefixes (e.g., "QNTS")
 
   // Address
   address?: ClientAddress;

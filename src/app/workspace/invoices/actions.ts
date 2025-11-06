@@ -446,7 +446,19 @@ export async function issueInvoice(
         throw new Error("Cannot issue an invoice with no line items");
       }
 
-      // Get sequential invoice number
+      // Get client to check for shortcode
+      const clientRef = adminDb
+        .collection(`tenants/${tenantId}/clients`)
+        .doc(invoice.clientId);
+      const clientSnap = await transaction.get(clientRef);
+
+      if (!clientSnap.exists) {
+        throw new Error("Client not found");
+      }
+
+      const client = { id: clientSnap.id, ...clientSnap.data() } as Client;
+
+      // Get sequential invoice number (internal)
       const now = new Date();
       const year = now.getFullYear();
       const invoiceNumber = await getNextInvoiceNumber(
@@ -456,11 +468,27 @@ export async function issueInvoice(
       );
       const formattedNumber = formatInvoiceNumber(year, invoiceNumber);
 
+      // Generate display number if client has shortcode
+      let invoiceDisplayNumber: string | undefined;
+      if (client.shortcode) {
+        const { generateInvoiceCode, formatInvoiceDisplayNumber } =
+          await import("@/lib/invoice-utils");
+        const code = generateInvoiceCode();
+        invoiceDisplayNumber = formatInvoiceDisplayNumber(
+          client.shortcode,
+          code
+        );
+      } else {
+        // Fallback to sequential number if no shortcode
+        invoiceDisplayNumber = formattedNumber;
+      }
+
       // Update invoice status
       const issueDate = Timestamp.now();
       transaction.update(invoiceRef, {
         status: "sent",
         invoiceNumber: formattedNumber,
+        invoiceDisplayNumber,
         issueDate,
         issuedBy: userId,
         updatedAt: FieldValue.serverTimestamp(),

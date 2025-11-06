@@ -74,7 +74,7 @@ export default function InvoicesPage() {
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 const matchesClient = invoice.clientName.toLowerCase().includes(term);
-                const matchesNumber = invoice.invoiceNumber?.toLowerCase().includes(term);
+                const matchesNumber = invoice.invoiceDisplayNumber?.toLowerCase().includes(term) || invoice.invoiceNumber?.toLowerCase().includes(term);
                 if (!matchesClient && !matchesNumber) {
                     return false;
                 }
@@ -164,7 +164,7 @@ export default function InvoicesPage() {
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
                                                 <h3 className="text-lg font-semibold">
-                                                    {invoice.invoiceNumber || "Draft"}
+                                                    {invoice.invoiceDisplayNumber || invoice.invoiceNumber || "Draft"}
                                                 </h3>
                                                 <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(invoice.status)}`}>
                                                     {getStatusLabel(invoice.status)}

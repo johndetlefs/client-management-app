@@ -82,10 +82,36 @@ export async function createClient(
   data: ClientFormData
 ): Promise<ActionResult<string>> {
   try {
+    // Validate shortcode if provided
+    if (data.shortcode) {
+      const { validateShortcode } = await import("@/lib/invoice-utils");
+      if (!validateShortcode(data.shortcode)) {
+        return {
+          success: false,
+          error: "Shortcode must be exactly 4 uppercase letters (e.g., QNTS)",
+        };
+      }
+
+      // Check uniqueness within tenant
+      const clientsRef = adminDb.collection(`tenants/${tenantId}/clients`);
+      const existingClient = await clientsRef
+        .where("shortcode", "==", data.shortcode.toUpperCase())
+        .limit(1)
+        .get();
+
+      if (!existingClient.empty) {
+        return {
+          success: false,
+          error: `Shortcode "${data.shortcode}" is already in use`,
+        };
+      }
+    }
+
     const clientsRef = adminDb.collection(`tenants/${tenantId}/clients`);
 
     const newClient = {
       ...data,
+      shortcode: data.shortcode?.toUpperCase() || undefined,
       tenantId,
       createdBy: userId,
       createdAt: FieldValue.serverTimestamp(),
@@ -110,6 +136,34 @@ export async function updateClient(
   data: ClientUpdateData
 ): Promise<ActionResult> {
   try {
+    // Validate shortcode if being updated
+    if (data.shortcode !== undefined) {
+      if (data.shortcode) {
+        const { validateShortcode } = await import("@/lib/invoice-utils");
+        if (!validateShortcode(data.shortcode)) {
+          return {
+            success: false,
+            error: "Shortcode must be exactly 4 uppercase letters (e.g., QNTS)",
+          };
+        }
+
+        // Check uniqueness (excluding current client)
+        const clientsRef = adminDb.collection(`tenants/${tenantId}/clients`);
+        const existingClient = await clientsRef
+          .where("shortcode", "==", data.shortcode.toUpperCase())
+          .limit(1)
+          .get();
+
+        if (!existingClient.empty && existingClient.docs[0].id !== clientId) {
+          return {
+            success: false,
+            error: `Shortcode "${data.shortcode}" is already in use`,
+          };
+        }
+      }
+      data.shortcode = data.shortcode?.toUpperCase() || undefined;
+    }
+
     const clientRef = adminDb.doc(`tenants/${tenantId}/clients/${clientId}`);
 
     const updateData = {

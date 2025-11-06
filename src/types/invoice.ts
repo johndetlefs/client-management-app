@@ -51,7 +51,8 @@ export interface Invoice {
   clientId: string;
 
   // Invoice identification
-  invoiceNumber?: string; // Sequential per tenant/year (e.g., "2025-001")
+  invoiceNumber?: string; // Sequential per tenant/year (e.g., "2025-001") - internal use
+  invoiceDisplayNumber?: string; // Client-facing display number (e.g., "QNTS-5TU72")
   status: InvoiceStatus;
 
   // Dates

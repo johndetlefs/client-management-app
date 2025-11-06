@@ -229,7 +229,7 @@ export default function InvoiceDetailPage() {
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">
-                            {invoice.invoiceNumber || "Draft Invoice"}
+                            {invoice.invoiceDisplayNumber || invoice.invoiceNumber || "Draft Invoice"}
                         </h1>
                         <p className="text-gray-600 mt-1">{invoice.clientName}</p>
                     </div>

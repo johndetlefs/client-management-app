@@ -126,7 +126,6 @@ export default function InvoicePrintPage() {
                         max-width: 210mm;
                         margin: 0 auto;
                         background: white;
-                        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
                         min-height: 297mm;
                     }
                 }
@@ -168,7 +167,7 @@ export default function InvoicePrintPage() {
                         </div>
                         <div className="text-right">
                             <h2 className="text-4xl font-bold mb-2">INVOICE</h2>
-                            <p className="text-xl font-semibold">{invoice.invoiceNumber || 'DRAFT'}</p>
+                            <p className="text-xl font-semibold">{invoice.invoiceDisplayNumber || invoice.invoiceNumber || 'DRAFT'}</p>
                         </div>
                     </div>
                 </div>

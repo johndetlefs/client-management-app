@@ -175,10 +175,41 @@ export function getDaysOverdue(dueDate: Date): number {
 }
 
 /**
- * Format invoice number
+ * Format invoice number (internal sequential format)
  */
 export function formatInvoiceNumber(year: number, number: number): string {
   return `${year}-${number.toString().padStart(3, "0")}`;
+}
+
+/**
+ * Validate client shortcode (must be exactly 4 uppercase letters)
+ */
+export function validateShortcode(shortcode: string): boolean {
+  return /^[A-Z]{4}$/.test(shortcode);
+}
+
+/**
+ * Generate a random 5-character alphanumeric code (uppercase)
+ */
+export function generateInvoiceCode(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 5; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+/**
+ * Format invoice display number with client shortcode
+ * @param shortcode - 4-letter client code (e.g., "QNTS")
+ * @param code - 5-char alphanumeric (e.g., "5TU72")
+ */
+export function formatInvoiceDisplayNumber(
+  shortcode: string,
+  code: string
+): string {
+  return `${shortcode.toUpperCase()}-${code}`;
 }
 
 /**
