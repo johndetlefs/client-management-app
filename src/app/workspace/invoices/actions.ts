@@ -712,6 +712,10 @@ export async function voidInvoice(
         throw new Error("Invoice is already void");
       }
 
+      if (invoice.status === "draft") {
+        throw new Error("Cannot void a draft invoice. Delete it instead.");
+      }
+
       // Update invoice status to void
       transaction.update(invoiceRef, {
         status: "void",

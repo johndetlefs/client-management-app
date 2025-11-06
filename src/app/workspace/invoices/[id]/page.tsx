@@ -215,9 +215,10 @@ export default function InvoiceDetailPage() {
 
     const isDraft = invoice.status === "draft";
     const canEdit = isDraft;
-    const canVoid = userRole === "owner" && invoice.status !== "void";
+    const canVoid = userRole === "owner" && invoice.status !== "void" && invoice.status !== "draft";
     const canDelete = isDraft;
     const canUpdatePayment = invoice.status !== "draft" && invoice.status !== "void";
+    const canIssue = isDraft && invoice.lines.length > 0;
 
     return (
         <div className="p-8 max-w-5xl mx-auto">
@@ -419,19 +420,19 @@ export default function InvoiceDetailPage() {
                         Delete Draft
                     </Button>
                 )}
-                {canVoid && (
-                    <Button variant="secondary" onClick={handleVoidInvoice} disabled={processing}>
-                        Void Invoice
-                    </Button>
-                )}
                 {canUpdatePayment && (
                     <Button variant="secondary" onClick={() => setShowPaymentModal(true)} disabled={processing}>
                         Update Payment
                     </Button>
                 )}
-                {isDraft && invoice.lines.length > 0 && (
+                {canIssue && (
                     <Button onClick={handleIssueInvoice} disabled={processing}>
                         Issue Invoice
+                    </Button>
+                )}
+                {canVoid && (
+                    <Button variant="secondary" onClick={handleVoidInvoice} disabled={processing}>
+                        Void Invoice
                     </Button>
                 )}
             </div>
