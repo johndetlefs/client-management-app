@@ -678,18 +678,16 @@ export async function voidInvoice(
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      // If invoice was draft, unlock all items
-      if (invoice.status === "draft") {
-        for (const jobItemId of invoice.lockedJobItemIds) {
-          const itemRef = adminDb
-            .collection(`tenants/${tenantId}/jobItems`)
-            .doc(jobItemId);
-          transaction.update(itemRef, {
-            status: "open" as ItemStatus,
-            lock: FieldValue.delete(),
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-        }
+      // Unlock all locked job items, regardless of invoice status
+      for (const jobItemId of invoice.lockedJobItemIds) {
+        const itemRef = adminDb
+          .collection(`tenants/${tenantId}/jobItems`)
+          .doc(jobItemId);
+        transaction.update(itemRef, {
+          status: "open" as ItemStatus,
+          lock: FieldValue.delete(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
       }
     });
 

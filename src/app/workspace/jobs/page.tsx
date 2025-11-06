@@ -159,11 +159,11 @@ export default function JobsPage() {
                                 aria-label="Search jobs"
                             />
                         </div>
-                        <div className="w-full sm:w-48">
+                        <div className="w-full sm:w-48 relative">
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value as JobStatus | 'all')}
-                                className="w-full px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full pl-4 pr-10 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
                                 aria-label="Filter by status"
                             >
                                 <option value="all">All Status</option>
@@ -171,6 +171,11 @@ export default function JobsPage() {
                                 <option value="completed">Completed</option>
                                 <option value="archived">Archived</option>
                             </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                <svg className="h-5 w-5 text-zinc-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fillRule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clipRule="evenodd" />
+                                </svg>
+                            </div>
                         </div>
                         <Button
                             onClick={() => router.push(JOB_ROUTES.NEW)}
