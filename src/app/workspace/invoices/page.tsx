@@ -10,7 +10,6 @@ import { Invoice, InvoiceFilterStatus } from "@/types/invoice";
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor, isInvoiceOverdue, getDaysOverdue } from "@/lib/invoice-utils";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import Link from "next/link";
 
 export default function InvoicesPage() {
     const { user } = useAuth();
@@ -142,7 +141,7 @@ export default function InvoicesPage() {
                 </div>
             </Card>
 
-            {/* Invoice List */}
+            {/* Invoice Table */}
             {filteredInvoices.length === 0 ? (
                 <Card className="p-12 text-center">
                     <p className="text-gray-500 mb-4">
@@ -157,62 +156,113 @@ export default function InvoicesPage() {
                     )}
                 </Card>
             ) : (
-                <div className="space-y-4">
-                    {filteredInvoices.map((invoice) => {
-                        const overdue = isInvoiceOverdue(invoice);
-                        const daysOverdue = invoice.dueDate && invoice.dueDate instanceof Date
-                            ? getDaysOverdue(invoice.dueDate)
-                            : 0;
+                <Card className="overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                        Invoice #
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                        Client
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                        Issue Date
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                        Due Date
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                        Amount
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                        Paid
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                        Balance
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white dark:bg-zinc-950 divide-y divide-zinc-200 dark:divide-zinc-800">
+                                {filteredInvoices.map((invoice) => {
+                                    const overdue = isInvoiceOverdue(invoice);
+                                    const daysOverdue = invoice.dueDate && invoice.dueDate instanceof Date
+                                        ? getDaysOverdue(invoice.dueDate)
+                                        : 0;
 
-                        return (
-                            <Link key={invoice.id} href={`/workspace/invoices/${invoice.id}`}>
-                                <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="text-lg font-semibold">
+                                    return (
+                                        <tr
+                                            key={invoice.id}
+                                            onClick={() => router.push(`/workspace/invoices/${invoice.id}`)}
+                                            className="hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors"
+                                        >
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm font-medium text-foreground">
                                                     {invoice.invoiceDisplayNumber || invoice.invoiceNumber || "Draft"}
-                                                </h3>
-                                                <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(invoice.status)}`}>
-                                                    {getStatusLabel(invoice.status)}
-                                                </span>
-                                                {overdue && (
-                                                    <span className="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800">
-                                                        {daysOverdue} {daysOverdue === 1 ? "day" : "days"} overdue
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-foreground">{invoice.clientName}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${getStatusColor(invoice.status)} w-fit`}>
+                                                        {getStatusLabel(invoice.status)}
                                                     </span>
-                                                )}
-                                            </div>
-                                            <p className="text-gray-600 mb-1">{invoice.clientName}</p>
-                                            <div className="flex gap-4 text-sm text-gray-500">
-                                                {invoice.issueDate && invoice.issueDate instanceof Date && (
-                                                    <span>Issued: {formatDate(invoice.issueDate)}</span>
-                                                )}
-                                                {invoice.dueDate && invoice.dueDate instanceof Date && (
-                                                    <span>Due: {formatDate(invoice.dueDate)}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-2xl font-bold">
-                                                {formatCurrency(invoice.totalMinor)}
-                                            </p>
-                                            {invoice.amountPaidMinor > 0 && (
-                                                <p className="text-sm text-gray-500">
-                                                    Paid: {formatCurrency(invoice.amountPaidMinor)}
-                                                </p>
-                                            )}
-                                            {invoice.balanceDueMinor > 0 && invoice.status !== "draft" && (
-                                                <p className="text-sm font-medium text-red-600">
-                                                    Due: {formatCurrency(invoice.balanceDueMinor)}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </Card>
-                            </Link>
-                        );
-                    })}
-                </div>
+                                                    {overdue && (
+                                                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800 w-fit">
+                                                            {daysOverdue} {daysOverdue === 1 ? "day" : "days"} overdue
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {invoice.issueDate && invoice.issueDate instanceof Date
+                                                        ? formatDate(invoice.issueDate)
+                                                        : "—"}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {invoice.dueDate && invoice.dueDate instanceof Date
+                                                        ? formatDate(invoice.dueDate)
+                                                        : "—"}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className="text-sm font-medium text-foreground">
+                                                    {formatCurrency(invoice.totalMinor)}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                                                    {invoice.amountPaidMinor > 0
+                                                        ? formatCurrency(invoice.amountPaidMinor)
+                                                        : "—"}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className={`text-sm font-medium ${invoice.balanceDueMinor > 0 && invoice.status !== "draft"
+                                                        ? "text-red-600 dark:text-red-400"
+                                                        : "text-zinc-600 dark:text-zinc-400"
+                                                    }`}>
+                                                    {invoice.status !== "draft" && invoice.balanceDueMinor > 0
+                                                        ? formatCurrency(invoice.balanceDueMinor)
+                                                        : "—"}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
             )}
         </div>
     );
