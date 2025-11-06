@@ -26,9 +26,9 @@ export interface InvoiceLine {
   unit: BillableUnit;
   quantity: number;
   unitPriceMinor: number; // Price per unit in minor units (cents)
-  taxRate?: number; // Tax rate applied (0.10 = 10%)
+  gstApplicable: boolean; // Whether GST/tax was applied
   subtotalMinor: number; // quantity * unitPriceMinor
-  taxMinor: number; // subtotalMinor * taxRate
+  taxMinor: number; // subtotalMinor * taxRate (from settings)
   totalMinor: number; // subtotalMinor + taxMinor
 }
 

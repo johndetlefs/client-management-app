@@ -23,7 +23,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
-    const [defaultTaxRate, setDefaultTaxRate] = useState<number>(10); // Default to 10%
+    const [defaultTaxRate, setDefaultTaxRate] = useState<number>(0.10); // Default to 10% (0.10)
 
     // Job item form state
     const [showItemForm, setShowItemForm] = useState(false);
@@ -33,7 +33,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     const [itemUnit, setItemUnit] = useState<BillableUnit>('hour');
     const [itemQuantity, setItemQuantity] = useState('');
     const [itemUnitPrice, setItemUnitPrice] = useState('');
-    const [itemTaxRate, setItemTaxRate] = useState('');
+    const [itemGstApplicable, setItemGstApplicable] = useState(true);
     const [itemFormError, setItemFormError] = useState<string | null>(null);
     const [itemSaving, setItemSaving] = useState(false);
 
@@ -42,16 +42,11 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
         async function loadSettings() {
             const result = await getTenantSettings(tenantId);
             if (result.success && result.data?.tax?.defaultRate) {
-                const rate = result.data.tax.defaultRate * 100;
-                setDefaultTaxRate(rate);
-                // Only set initial form value if not editing
-                if (!editingItemId && !showItemForm) {
-                    setItemTaxRate(rate.toString());
-                }
+                setDefaultTaxRate(result.data.tax.defaultRate);
             }
         }
         loadSettings();
-    }, [tenantId, editingItemId, showItemForm]);
+    }, [tenantId]);
 
     // Load job items
     useEffect(() => {
@@ -77,7 +72,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
         setItemUnit('hour');
         setItemQuantity('');
         setItemUnitPrice('');
-        setItemTaxRate(defaultTaxRate.toString());
+        setItemGstApplicable(true);
         setItemFormError(null);
         setEditingItemId(null);
         setShowItemForm(false);
@@ -90,7 +85,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
         setItemUnit(item.unit);
         setItemQuantity(item.quantity.toString());
         setItemUnitPrice((item.unitPriceMinor / 100).toFixed(2));
-        setItemTaxRate(item.taxRate ? (item.taxRate * 100).toString() : '');
+        setItemGstApplicable(item.gstApplicable ?? true); // Default to true if undefined (legacy items)
         setShowItemForm(true);
     };
 
@@ -119,13 +114,6 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
             return;
         }
 
-        const taxRate = itemTaxRate ? parseFloat(itemTaxRate) / 100 : undefined;
-        if (taxRate !== undefined && (taxRate < 0 || taxRate > 1)) {
-            setItemFormError('Tax rate must be between 0 and 100');
-            setItemSaving(false);
-            return;
-        }
-
         if (!user) {
             setItemFormError('User not authenticated.');
             setItemSaving(false);
@@ -140,7 +128,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
             unit: itemUnit,
             quantity,
             unitPriceMinor: Math.round(unitPrice * 100),
-            taxRate,
+            gstApplicable: itemGstApplicable,
             status: 'open',
         };
 
@@ -194,7 +182,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                     {!showItemForm && (
                         <Button
                             onClick={() => {
-                                setItemTaxRate(defaultTaxRate.toString());
+                                setItemGstApplicable(true);
                                 setShowItemForm(true);
                             }}
                             className="text-sm"
@@ -306,19 +294,21 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="itemTaxRate" className="block text-sm font-medium text-foreground mb-2">
-                                        Tax Rate (%)
+                                    <label htmlFor="itemGstApplicable" className="block text-sm font-medium text-foreground mb-2">
+                                        GST Applicable
                                     </label>
-                                    <Input
-                                        id="itemTaxRate"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        max="100"
-                                        value={itemTaxRate}
-                                        onChange={(e) => setItemTaxRate(e.target.value)}
-                                        placeholder="10"
-                                    />
+                                    <div className="flex items-center h-10">
+                                        <input
+                                            id="itemGstApplicable"
+                                            type="checkbox"
+                                            checked={itemGstApplicable}
+                                            onChange={(e) => setItemGstApplicable(e.target.checked)}
+                                            className="w-5 h-5 text-blue-600 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 rounded focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <span className="ml-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                            Apply GST to this item
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -343,7 +333,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                     <div className="space-y-3">
                         {jobItems.map((item) => {
                             const subtotal = computeLineSubtotal(item);
-                            const tax = computeTaxAmount(item);
+                            const tax = computeTaxAmount(item, defaultTaxRate);
                             const total = subtotal + tax;
 
                             return (
@@ -363,8 +353,8 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                                 <span>
                                                     {item.quantity} × {formatMinorUnits(item.unitPriceMinor)} / {getBillableUnitLabel(item.unit, 1)}
                                                 </span>
-                                                {item.taxRate && (
-                                                    <span>Tax: {(item.taxRate * 100).toFixed(0)}%</span>
+                                                {(item.gstApplicable ?? true) && (
+                                                    <span>GST applicable</span>
                                                 )}
                                                 <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-zinc-100 dark:bg-zinc-800">
                                                     {item.status}
@@ -380,7 +370,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                             </div>
                                             {tax > 0 && (
                                                 <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                                                    Tax: {formatMinorUnits(tax)}
+                                                    GST: {formatMinorUnits(tax)}
                                                 </div>
                                             )}
                                         </div>
@@ -418,7 +408,11 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                 <span>Total ({jobItems.length} {jobItems.length === 1 ? 'item' : 'items'})</span>
                                 <span>
                                     {formatMinorUnits(
-                                        jobItems.reduce((sum, item) => sum + computeLineSubtotal(item) + computeTaxAmount(item), 0)
+                                        jobItems.reduce((sum, item) => {
+                                            const subtotal = computeLineSubtotal(item);
+                                            const tax = computeTaxAmount(item, defaultTaxRate);
+                                            return sum + subtotal + tax;
+                                        }, 0)
                                     )}
                                 </span>
                             </div>

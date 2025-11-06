@@ -5,6 +5,7 @@ import { Invoice, InvoiceFormData, InvoiceCounter } from "@/types/invoice";
 import { JobItem, ItemStatus } from "@/types/jobItem";
 import { Client } from "@/types/client";
 import { Job } from "@/types/job";
+import { TenantSettings } from "@/types/tenant";
 import {
   generatePublicToken,
   createInvoiceLineFromJobItem,
@@ -199,6 +200,14 @@ export async function addItemsToInvoice(
         throw new Error("Can only add items to draft invoices");
       }
 
+      // Load tenant settings to get tax rate
+      const settingsRef = adminDb.doc(`tenants/${tenantId}`);
+      const settingsSnap = await transaction.get(settingsRef);
+      const settings = settingsSnap.exists
+        ? (settingsSnap.data() as TenantSettings)
+        : null;
+      const taxRate = settings?.tax?.defaultRate || 0;
+
       // Fetch and validate job items
       const itemRefs = jobItemIds.map((id) =>
         adminDb.collection(`tenants/${tenantId}/jobItems`).doc(id)
@@ -254,7 +263,8 @@ export async function addItemsToInvoice(
       const newLines = validItems.map((item) =>
         createInvoiceLineFromJobItem(
           item,
-          jobTitles.get(item.jobId) || "Unknown Job"
+          jobTitles.get(item.jobId) || "Unknown Job",
+          taxRate
         )
       );
 
@@ -262,7 +272,7 @@ export async function addItemsToInvoice(
       const allLines = [...invoice.lines, ...newLines];
 
       // Compute new totals
-      const totals = computeInvoiceTotals(allLines);
+      const totals = computeInvoiceTotals(allLines, taxRate);
       const balanceDueMinor = computeBalanceDue(
         totals.totalMinor,
         invoice.amountPaidMinor
@@ -332,6 +342,14 @@ export async function removeItemFromInvoice(
         throw new Error("Can only remove items from draft invoices");
       }
 
+      // Load tenant settings to get tax rate
+      const settingsRef = adminDb.doc(`tenants/${tenantId}`);
+      const settingsSnap = await transaction.get(settingsRef);
+      const settings = settingsSnap.exists
+        ? (settingsSnap.data() as TenantSettings)
+        : null;
+      const taxRate = settings?.tax?.defaultRate || 0;
+
       // Remove line from invoice
       const updatedLines = invoice.lines.filter(
         (line) => line.jobItemId !== jobItemId
@@ -341,7 +359,7 @@ export async function removeItemFromInvoice(
       );
 
       // Compute new totals
-      const totals = computeInvoiceTotals(updatedLines);
+      const totals = computeInvoiceTotals(updatedLines, taxRate);
       const balanceDueMinor = computeBalanceDue(
         totals.totalMinor,
         invoice.amountPaidMinor

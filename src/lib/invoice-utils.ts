@@ -22,10 +22,13 @@ export function generatePublicToken(): string {
  */
 export function createInvoiceLineFromJobItem(
   item: JobItem,
-  jobTitle: string
+  jobTitle: string,
+  taxRate: number
 ): InvoiceLine {
   const subtotalMinor = Math.round(item.quantity * item.unitPriceMinor);
-  const taxMinor = item.taxRate ? Math.round(subtotalMinor * item.taxRate) : 0;
+  // Default to true for legacy items that don't have gstApplicable field
+  const gstApplicable = item.gstApplicable ?? true;
+  const taxMinor = gstApplicable ? Math.round(subtotalMinor * taxRate) : 0;
   const totalMinor = subtotalMinor + taxMinor;
 
   return {
@@ -37,7 +40,7 @@ export function createInvoiceLineFromJobItem(
     unit: item.unit,
     quantity: item.quantity,
     unitPriceMinor: item.unitPriceMinor,
-    taxRate: item.taxRate,
+    gstApplicable,
     subtotalMinor,
     taxMinor,
     totalMinor,
@@ -47,7 +50,10 @@ export function createInvoiceLineFromJobItem(
 /**
  * Compute invoice totals from lines
  */
-export function computeInvoiceTotals(lines: InvoiceLine[]): {
+export function computeInvoiceTotals(
+  lines: InvoiceLine[],
+  taxRate: number
+): {
   subtotalMinor: number;
   taxMinor: number;
   totalMinor: number;
@@ -55,34 +61,27 @@ export function computeInvoiceTotals(lines: InvoiceLine[]): {
 } {
   let subtotalMinor = 0;
   let taxMinor = 0;
-  const taxByRate = new Map<
-    number,
-    { taxableAmountMinor: number; taxMinor: number }
-  >();
+  let taxableAmountMinor = 0;
 
   for (const line of lines) {
     subtotalMinor += line.subtotalMinor;
     taxMinor += line.taxMinor;
 
-    // Track tax breakdown by rate
-    if (line.taxRate !== undefined && line.taxRate > 0) {
-      const existing = taxByRate.get(line.taxRate) || {
-        taxableAmountMinor: 0,
-        taxMinor: 0,
-      };
-      existing.taxableAmountMinor += line.subtotalMinor;
-      existing.taxMinor += line.taxMinor;
-      taxByRate.set(line.taxRate, existing);
+    // Track taxable amounts (items with GST applicable)
+    if (line.gstApplicable) {
+      taxableAmountMinor += line.subtotalMinor;
     }
   }
 
-  const taxBreakdown: TaxBreakdown[] = Array.from(taxByRate.entries()).map(
-    ([rate, amounts]) => ({
-      rate,
-      taxableAmountMinor: amounts.taxableAmountMinor,
-      taxMinor: amounts.taxMinor,
-    })
-  );
+  // Create tax breakdown only if there's tax to report
+  const taxBreakdown: TaxBreakdown[] = [];
+  if (taxMinor > 0 && taxRate > 0) {
+    taxBreakdown.push({
+      rate: taxRate,
+      taxableAmountMinor,
+      taxMinor,
+    });
+  }
 
   return {
     subtotalMinor,

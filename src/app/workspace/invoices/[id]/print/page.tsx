@@ -307,13 +307,8 @@ export default function InvoicePrintPage() {
                                         {formatCurrency(line.subtotalMinor)}
                                     </td>
                                     <td className="py-4 text-right">
-                                        {line.taxRate ? (
-                                            <>
-                                                {formatCurrency(line.taxMinor)}
-                                                <span className="text-xs text-foreground/50 ml-1">
-                                                    ({formatTaxRate(line.taxRate)})
-                                                </span>
-                                            </>
+                                        {line.gstApplicable && line.taxMinor > 0 ? (
+                                            formatCurrency(line.taxMinor)
                                         ) : (
                                             '—'
                                         )}

@@ -154,10 +154,6 @@ export async function createJobItem(
       return { success: false, error: "Unit price cannot be negative" };
     }
 
-    if (data.taxRate !== undefined && (data.taxRate < 0 || data.taxRate > 1)) {
-      return { success: false, error: "Tax rate must be between 0 and 1" };
-    }
-
     const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
 
     const jobItemData = {
@@ -214,14 +210,6 @@ export async function updateJobItem(
 
     if (data.unitPriceMinor !== undefined && data.unitPriceMinor < 0) {
       return { success: false, error: "Unit price cannot be negative" };
-    }
-
-    if (
-      data.taxRate !== undefined &&
-      data.taxRate !== null &&
-      (data.taxRate < 0 || data.taxRate > 1)
-    ) {
-      return { success: false, error: "Tax rate must be between 0 and 1" };
     }
 
     const updateData = {

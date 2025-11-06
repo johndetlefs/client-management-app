@@ -36,7 +36,7 @@ export interface JobItem {
   unitPriceMinor: number; // Price in minor units (cents)
 
   // Tax
-  taxRate?: number; // Optional tax rate (0.10 = 10%)
+  gstApplicable?: boolean; // Whether GST/tax should be applied to this item (defaults to true for legacy items)
 
   // Invoice locking
   status: ItemStatus;
@@ -77,21 +77,25 @@ export function computeLineSubtotal(
  * Helper function to compute tax amount in minor units
  */
 export function computeTaxAmount(
-  item: Pick<JobItem, "quantity" | "unitPriceMinor" | "taxRate">
+  item: Pick<JobItem, "quantity" | "unitPriceMinor" | "gstApplicable">,
+  taxRate: number
 ): number {
-  if (!item.taxRate) return 0;
+  // Default to true for legacy items that don't have gstApplicable field
+  const shouldApplyGst = item.gstApplicable ?? true;
+  if (!shouldApplyGst || taxRate <= 0) return 0;
   const subtotal = computeLineSubtotal(item);
-  return Math.round(subtotal * item.taxRate);
+  return Math.round(subtotal * taxRate);
 }
 
 /**
  * Helper function to compute line total (subtotal + tax) in minor units
  */
 export function computeLineTotal(
-  item: Pick<JobItem, "quantity" | "unitPriceMinor" | "taxRate">
+  item: Pick<JobItem, "quantity" | "unitPriceMinor" | "gstApplicable">,
+  taxRate: number
 ): number {
   const subtotal = computeLineSubtotal(item);
-  const tax = computeTaxAmount(item);
+  const tax = computeTaxAmount(item, taxRate);
   return subtotal + tax;
 }
 
