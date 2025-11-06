@@ -188,10 +188,10 @@ export function validateShortcode(shortcode: string): boolean {
 }
 
 /**
- * Generate a random 5-character alphanumeric code (uppercase)
+ * Generate a random 5-character letter code (uppercase)
  */
 export function generateInvoiceCode(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let code = "";
   for (let i = 0; i < 5; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -202,7 +202,7 @@ export function generateInvoiceCode(): string {
 /**
  * Format invoice display number with client shortcode
  * @param shortcode - 4-letter client code (e.g., "QNTS")
- * @param code - 5-char alphanumeric (e.g., "5TU72")
+ * @param code - 5-letter code (e.g., "ABCDE")
  */
 export function formatInvoiceDisplayNumber(
   shortcode: string,
