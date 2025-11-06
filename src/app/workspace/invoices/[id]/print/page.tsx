@@ -266,54 +266,54 @@ export default function InvoicePrintPage() {
 
                 {/* Line Items Table */}
                 <div className="mb-8">
-                    <table className="w-full">
+                    <table className="w-full table-fixed">
                         <thead>
                             <tr className="border-b-2 border-foreground/20">
-                                <th className="text-left py-3 font-semibold uppercase text-sm w-1/3">Description</th>
-                                <th className="text-center py-3 font-semibold uppercase text-sm w-16">Qty</th>
-                                <th className="text-center py-3 font-semibold uppercase text-sm w-20">Unit</th>
-                                <th className="text-right py-3 font-semibold uppercase text-sm w-24">
+                                <th className="text-left py-3 px-2 font-semibold uppercase text-sm" style={{ width: '40%' }}>Description</th>
+                                <th className="text-center py-3 px-2 font-semibold uppercase text-sm" style={{ width: '10%' }}>
                                     Price
                                 </th>
-                                <th className="text-right py-3 font-semibold uppercase text-sm w-24">
+                                <th className="text-center py-3 px-2 font-semibold uppercase text-sm" style={{ width: '8%' }}>Qty</th>
+                                <th className="text-center py-3 px-2 font-semibold uppercase text-sm" style={{ width: '10%' }}>Unit</th>
+                                <th className="text-center py-3 px-2 font-semibold uppercase text-sm" style={{ width: '11%' }}>
                                     Subtotal
                                 </th>
-                                <th className="text-right py-3 font-semibold uppercase text-sm w-24">
+                                <th className="text-center py-3 px-2 font-semibold uppercase text-sm" style={{ width: '10%' }}>
                                     {(settings?.tax?.taxType && settings.tax.taxType !== 'None')
                                         ? settings.tax.taxType
                                         : 'TAX'}
                                 </th>
-                                <th className="text-right py-3 font-semibold uppercase text-sm w-24">Amount</th>
+                                <th className="text-center py-3 px-2 font-semibold uppercase text-sm" style={{ width: '11%' }}>Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             {invoice.lines.map((line, index) => (
                                 <tr key={index} className="border-b border-foreground/10">
-                                    <td className="py-4 w-1/3">
+                                    <td className="py-4 px-2">
                                         <p className="font-medium">{line.title}</p>
                                         {line.description && (
                                             <p className="text-sm text-foreground/60 mt-1">{line.description}</p>
                                         )}
                                         <p className="text-xs text-foreground/50 mt-1">Job: {line.jobTitle}</p>
                                     </td>
-                                    <td className="py-4 text-center">
+                                    <td className="py-4 px-2 text-center">{formatCurrency(line.unitPriceMinor)}</td>
+                                    <td className="py-4 px-2 text-center">
                                         {line.quantity}
                                     </td>
-                                    <td className="py-4 text-center">
+                                    <td className="py-4 px-2 text-center">
                                         {getBillableUnitLabel(line.unit, line.quantity)}
                                     </td>
-                                    <td className="py-4 text-right">{formatCurrency(line.unitPriceMinor)}</td>
-                                    <td className="py-4 text-right">
+                                    <td className="py-4 px-2 text-center">
                                         {formatCurrency(line.subtotalMinor)}
                                     </td>
-                                    <td className="py-4 text-right">
+                                    <td className="py-4 px-2 text-center">
                                         {line.gstApplicable && line.taxMinor > 0 ? (
                                             formatCurrency(line.taxMinor)
                                         ) : (
                                             '—'
                                         )}
                                     </td>
-                                    <td className="py-4 text-right font-medium">
+                                    <td className="py-4 px-2 text-center font-medium">
                                         {formatCurrency(line.totalMinor)}
                                     </td>
                                 </tr>

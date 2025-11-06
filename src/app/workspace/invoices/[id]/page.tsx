@@ -293,60 +293,66 @@ export default function InvoiceDetailPage() {
                     <p className="text-gray-500 text-center py-8">No items added yet</p>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full table-fixed">
                             <thead className="border-b">
                                 <tr className="text-left text-sm text-gray-600">
-                                    <th className="pb-2">Description</th>
-                                    <th className="pb-2 text-center">Qty</th>
-                                    <th className="pb-2 text-center">Unit</th>
-                                    <th className="pb-2 text-right">Price</th>
-                                    <th className="pb-2 text-right">Subtotal</th>
-                                    {invoice.lines.some((l) => l.taxRate) && (
-                                        <th className="pb-2 text-right">
+                                    <th className="pb-3 px-2" style={{ width: '40%' }}>Description</th>
+                                    <th className="pb-3 px-2 text-center" style={{ width: '10%' }}>Price</th>
+                                    <th className="pb-3 px-2 text-center" style={{ width: '8%' }}>Qty</th>
+                                    <th className="pb-3 px-2 text-center" style={{ width: '10%' }}>Unit</th>
+                                    <th className="pb-3 px-2 text-center" style={{ width: '11%' }}>Subtotal</th>
+                                    {invoice.lines.some((l) => l.gstApplicable) && (
+                                        <th className="pb-3 px-2 text-center" style={{ width: '10%' }}>
                                             {settings?.tax?.taxType && settings.tax.taxType !== 'None'
                                                 ? settings.tax.taxType
                                                 : 'Tax'}
                                         </th>
                                     )}
-                                    <th className="pb-2 text-right">Total</th>
-                                    {canEdit && <th className="pb-2"></th>}
+                                    <th className="pb-3 px-2 text-center" style={{ width: canEdit ? '8%' : '11%' }}>Total</th>
+                                    {canEdit && <th className="pb-3 px-2" style={{ width: '8%' }}></th>}
                                 </tr>
                             </thead>
                             <tbody>
                                 {invoice.lines.map((line) => (
                                     <tr key={line.jobItemId} className="border-b">
-                                        <td className="py-3">
+                                        <td className="py-4 px-2">
                                             <p className="font-medium">{line.title}</p>
                                             {line.description && <p className="text-sm text-gray-600">{line.description}</p>}
                                             <p className="text-xs text-gray-500">Job: {line.jobTitle}</p>
                                         </td>
-                                        <td className="py-3 text-center">{line.quantity}</td>
-                                        <td className="py-3 text-center">
+                                        <td className="py-4 px-2 text-center">{formatCurrency(line.unitPriceMinor)}</td>
+                                        <td className="py-4 px-2 text-center">{line.quantity}</td>
+                                        <td className="py-4 px-2 text-center">
                                             {getBillableUnitLabel(line.unit, line.quantity)}
                                         </td>
-                                        <td className="py-3 text-right">{formatCurrency(line.unitPriceMinor)}</td>
-                                        <td className="py-3 text-right">{formatCurrency(line.subtotalMinor)}</td>
-                                        {invoice.lines.some((l) => l.taxRate) && (
-                                            <td className="py-3 text-right">
-                                                {line.taxRate ? (
-                                                    <>
-                                                        {formatCurrency(line.taxMinor)}
-                                                        <span className="text-xs text-gray-500 ml-1">({formatTaxRate(line.taxRate)})</span>
-                                                    </>
+                                        <td className="py-4 px-2 text-center">{formatCurrency(line.subtotalMinor)}</td>
+                                        {invoice.lines.some((l) => l.gstApplicable) && (
+                                            <td className="py-4 px-2 text-center">
+                                                {line.gstApplicable && line.taxMinor > 0 ? (
+                                                    formatCurrency(line.taxMinor)
                                                 ) : (
                                                     "—"
                                                 )}
                                             </td>
                                         )}
-                                        <td className="py-3 text-right font-medium">{formatCurrency(line.totalMinor)}</td>
+                                        <td className="py-4 px-2 text-center font-medium">{formatCurrency(line.totalMinor)}</td>
                                         {canEdit && (
-                                            <td className="py-3 text-right">
+                                            <td className="py-4 px-2 text-center">
                                                 <button
                                                     onClick={() => handleRemoveItem(line.jobItemId)}
                                                     disabled={processing}
-                                                    className="text-red-600 hover:underline text-sm"
+                                                    className="text-red-600 hover:text-red-700 transition-colors disabled:opacity-50 p-1 cursor-pointer"
+                                                    title="Remove item"
+                                                    aria-label="Remove item"
                                                 >
-                                                    Remove
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        viewBox="0 0 24 24"
+                                                        fill="currentColor"
+                                                        className="w-5 h-5"
+                                                    >
+                                                        <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 101.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z" clipRule="evenodd" />
+                                                    </svg>
                                                 </button>
                                             </td>
                                         )}
@@ -436,6 +442,7 @@ export default function InvoiceDetailPage() {
                     tenantId={tenantId}
                     invoiceId={invoice.id}
                     clientId={invoice.clientId}
+                    settings={settings}
                     onClose={() => setShowItemSelector(false)}
                 />
             )}
@@ -500,17 +507,20 @@ function ItemSelectorModal({
     tenantId,
     invoiceId,
     clientId,
+    settings,
     onClose,
 }: {
     tenantId: string;
     invoiceId: string;
     clientId: string;
+    settings: TenantSettings | null;
     onClose: () => void;
 }) {
     const [items, setItems] = useState<Array<JobItem & { jobTitle: string }>>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
+    const taxRate = settings?.tax?.defaultRate || 0;
 
     useEffect(() => {
         const loadItems = async () => {
@@ -575,7 +585,8 @@ function ItemSelectorModal({
                         <div className="space-y-2">
                             {items.map((item) => {
                                 const subtotal = Math.round(item.quantity * item.unitPriceMinor);
-                                const tax = item.taxRate ? Math.round(subtotal * item.taxRate) : 0;
+                                const gstApplicable = item.gstApplicable ?? true;
+                                const tax = gstApplicable ? Math.round(subtotal * taxRate) : 0;
                                 const total = subtotal + tax;
 
                                 return (
@@ -598,9 +609,9 @@ function ItemSelectorModal({
                                             <p className="text-sm mt-1">
                                                 {item.quantity} × {formatCurrency(item.unitPriceMinor)} ={" "}
                                                 <span className="font-medium">{formatCurrency(total)}</span>
-                                                {item.taxRate && (
+                                                {gstApplicable && tax > 0 && (
                                                     <span className="text-xs text-gray-500 ml-1">
-                                                        (incl. {formatTaxRate(item.taxRate)} tax)
+                                                        (incl. {formatTaxRate(taxRate)} tax)
                                                     </span>
                                                 )}
                                             </p>

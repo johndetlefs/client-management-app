@@ -120,14 +120,21 @@ export function getBillableUnitLabel(
   unit: BillableUnit,
   quantity: number = 1
 ): string {
-  const labels: Record<BillableUnit, { singular: string; plural: string }> = {
+  // Expense is not a unit - return N/A
+  if (unit === "expense") {
+    return "—";
+  }
+
+  const labels: Record<
+    Exclude<BillableUnit, "expense">,
+    { singular: string; plural: string }
+  > = {
     hour: { singular: "hour", plural: "hours" },
     half_day: { singular: "half day", plural: "half days" },
     day: { singular: "day", plural: "days" },
     unit: { singular: "unit", plural: "units" },
-    expense: { singular: "expense", plural: "expenses" },
   };
 
-  const label = labels[unit];
+  const label = labels[unit as Exclude<BillableUnit, "expense">];
   return quantity === 1 ? label.singular : label.plural;
 }
