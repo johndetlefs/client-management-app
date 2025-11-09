@@ -56,6 +56,10 @@ export default function SignupPage() {
                 return;
             }
 
+            // Wait a moment for Firestore to propagate the changes
+            // This helps avoid race conditions when the workspace layout tries to fetch the tenant
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             router.push('/workspace/dashboard');
         } catch (err) {
             if (err instanceof Error) {

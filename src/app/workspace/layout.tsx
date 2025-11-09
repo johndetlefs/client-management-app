@@ -38,7 +38,25 @@ export default function WorkspaceLayout({
             setError(null);
 
             try {
-                const tid = await getCurrentUserTenantId();
+                // Retry logic to handle race conditions after signup
+                let tid: string | null = null;
+                let attempts = 0;
+                const maxAttempts = 5;
+                const baseDelay = 500; // Start with 500ms delay
+
+                while (attempts < maxAttempts && !tid) {
+                    tid = await getCurrentUserTenantId();
+
+                    if (!tid && attempts < maxAttempts - 1) {
+                        // Wait before retrying with exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempts)));
+                        attempts++;
+                        console.log(`Retrying tenant fetch (attempt ${attempts + 1}/${maxAttempts})...`);
+                    } else {
+                        break;
+                    }
+                }
+
                 if (!tid) {
                     setError('No tenant found for this user. Please contact support.');
                 } else {
