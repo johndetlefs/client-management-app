@@ -19,6 +19,13 @@ export default function PublicInvoicePage() {
         email?: string;
         taxLabel?: string;
         logoUrl?: string;
+        bankAccount?: {
+            accountName?: string;
+            bsb?: string;
+            accountNumber?: string;
+        };
+        invoiceTerms?: string;
+        invoiceFooter?: string;
     } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -118,7 +125,7 @@ export default function PublicInvoicePage() {
             </div>
 
             {/* Invoice Content */}
-            <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto px-4 py-8 print-content">
                 <div className="bg-background rounded-lg shadow-sm border border-foreground/10 p-8 invoice-container">
                     {/* Invoice Header */}
                     <div className="flex justify-between mb-8">
@@ -293,28 +300,66 @@ export default function PublicInvoicePage() {
                         </div>
                     </div>
 
-                    {/* Notes and Payment Instructions */}
-                    {(invoice.notes || invoice.paymentInstructions) && (
-                        <div className="border-t border-foreground/10 pt-6 space-y-4">
-                            {invoice.notes && (
-                                <div>
-                                    <h3 className="font-semibold text-sm mb-2">Notes</h3>
-                                    <p className="text-sm text-foreground/80 whitespace-pre-wrap">{invoice.notes}</p>
+                    {/* Bank Account Details */}
+                    {tenantSettings?.bankAccount &&
+                        (tenantSettings.bankAccount.accountName ||
+                            tenantSettings.bankAccount.bsb ||
+                            tenantSettings.bankAccount.accountNumber) && (
+                            <div className="payment-section mb-8 p-6 bg-foreground/5 rounded-lg">
+                                <h3 className="font-semibold mb-3">Payment Details</h3>
+                                <div className="space-y-1 text-sm">
+                                    {tenantSettings.bankAccount.accountName && (
+                                        <p>
+                                            <span className="font-medium">Account Name:</span>{' '}
+                                            {tenantSettings.bankAccount.accountName}
+                                        </p>
+                                    )}
+                                    {tenantSettings.bankAccount.bsb && (
+                                        <p>
+                                            <span className="font-medium">BSB:</span>{' '}
+                                            {tenantSettings.bankAccount.bsb}
+                                        </p>
+                                    )}
+                                    {tenantSettings.bankAccount.accountNumber && (
+                                        <p>
+                                            <span className="font-medium">Account Number:</span>{' '}
+                                            {tenantSettings.bankAccount.accountNumber}
+                                        </p>
+                                    )}
                                 </div>
-                            )}
-                            {invoice.paymentInstructions && (
-                                <div>
-                                    <h3 className="font-semibold text-sm mb-2">Payment Instructions</h3>
-                                    <p className="text-sm text-foreground/80 whitespace-pre-wrap">{invoice.paymentInstructions}</p>
-                                </div>
-                            )}
+                            </div>
+                        )}
+
+                    {/* Payment Terms */}
+                    {tenantSettings?.invoiceTerms && (
+                        <div className="mb-6">
+                            <h3 className="font-semibold mb-2">Payment Terms</h3>
+                            <p className="text-sm text-foreground/70 whitespace-pre-wrap">{tenantSettings.invoiceTerms}</p>
                         </div>
                     )}
-                </div>
 
-                {/* Footer */}
-                <div className="text-center mt-8 text-sm text-foreground/50">
-                    <p>Thank you for your business!</p>
+                    {/* Notes */}
+                    {invoice.notes && (
+                        <div className="mb-6">
+                            <h3 className="font-semibold mb-2">Notes</h3>
+                            <p className="text-sm text-foreground/70 whitespace-pre-wrap">{invoice.notes}</p>
+                        </div>
+                    )}
+
+                    {/* Payment Instructions (from invoice) */}
+                    {invoice.paymentInstructions && (
+                        <div className="mb-6">
+                            <h3 className="font-semibold mb-2">Payment Instructions</h3>
+                            <p className="text-sm text-foreground/70 whitespace-pre-wrap">{invoice.paymentInstructions}</p>
+                        </div>
+                    )}
+
+                    {/* Footer */}
+                    {tenantSettings?.invoiceFooter && (
+                        <div className="mt-12 pt-6 border-t border-foreground/10 text-center">
+                            <p className="text-sm text-foreground/60">{tenantSettings.invoiceFooter}</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -351,15 +396,21 @@ export default function PublicInvoicePage() {
                         size: A4;
                     }
                     
-                    /* Add padding to content instead of page margins */
-                    .invoice-container {
-                        padding: 0.5in !important;
-                    }
-                    
                     /* Remove browser print headers and footers */
                     html, body {
                         margin: 0 !important;
                         padding: 0 !important;
+                    }
+                    
+                    /* Ensure proper padding on print content */
+                    .print-content {
+                        padding: 0.5in !important;
+                    }
+                    
+                    /* Add padding to content instead of page margins */
+                    .invoice-container {
+                        padding: 0 !important;
+                        margin: 0 !important;
                     }
                     
                     /* Prevent line items from breaking across pages */
@@ -381,8 +432,15 @@ export default function PublicInvoicePage() {
                     }
                     
                     /* Keep sections together */
-                    .totals-section {
+                    .totals-section,
+                    .payment-section {
                         page-break-inside: avoid;
+                    }
+                    
+                    /* Preserve background colors for payment details */
+                    .payment-section {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                 }
             `}</style>

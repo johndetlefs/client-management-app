@@ -110,6 +110,13 @@ export async function getTenantSettingsForPublicInvoice(
     email?: string;
     taxLabel?: string;
     logoUrl?: string;
+    bankAccount?: {
+      accountName?: string;
+      bsb?: string;
+      accountNumber?: string;
+    };
+    invoiceTerms?: string;
+    invoiceFooter?: string;
   }>
 > {
   try {
@@ -123,10 +130,6 @@ export async function getTenantSettingsForPublicInvoice(
 
     const data = businessSnap.data();
 
-    console.log("Raw business data:", data);
-    console.log("Business name:", data?.businessName);
-    console.log("ABN:", data?.abn);
-
     return {
       success: true,
       data: {
@@ -137,6 +140,9 @@ export async function getTenantSettingsForPublicInvoice(
         email: data?.email,
         taxLabel: data?.tax?.taxType,
         logoUrl: data?.logoUrl,
+        bankAccount: data?.bankAccount,
+        invoiceTerms: data?.invoiceTerms,
+        invoiceFooter: data?.invoiceFooter,
       },
     };
   } catch (error) {
