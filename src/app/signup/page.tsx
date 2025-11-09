@@ -9,7 +9,6 @@ import { Header } from '@/components/layout/Header';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
-import { initializeNewUser } from '@/lib/initializeUser';
 
 export default function SignupPage() {
     const [email, setEmail] = useState('');
@@ -39,11 +38,21 @@ export default function SignupPage() {
         try {
             const userCredential = await signUp(email, password);
 
-            // Initialize user profile and tenant
-            const initResult = await initializeNewUser(userCredential.uid, email);
+            // Initialize user profile and tenant via API route
+            const response = await fetch('/api/initialize-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: userCredential.uid,
+                    email: email,
+                }),
+            });
 
-            if (!initResult.success) {
-                setError(initResult.error || 'Failed to set up your account');
+            if (!response.ok) {
+                const errorData = await response.json();
+                setError(errorData.error || 'Failed to set up your account');
                 return;
             }
 

@@ -38,18 +38,51 @@ function initializeFirebaseAdmin() {
     });
   } else {
     // Production: use service account credentials
-    if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    // Support two formats:
+    // 1. Full JSON service account in FIREBASE_SERVICE_ACCOUNT_KEY
+    // 2. Individual fields: FIREBASE_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, FIREBASE_ADMIN_PRIVATE_KEY
+
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+      // Format 1: Full service account JSON
+      const serviceAccount = JSON.parse(
+        process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+      );
+
+      adminApp = initializeApp({
+        credential: cert(serviceAccount),
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      });
+    } else if (
+      process.env.FIREBASE_ADMIN_CLIENT_EMAIL &&
+      process.env.FIREBASE_ADMIN_PRIVATE_KEY
+    ) {
+      // Format 2: Individual credential fields
+      const projectId =
+        process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+        process.env.FIREBASE_PROJECT_ID;
+
+      if (!projectId) {
+        throw new Error(
+          "FIREBASE_PROJECT_ID or NEXT_PUBLIC_FIREBASE_PROJECT_ID must be set"
+        );
+      }
+
+      adminApp = initializeApp({
+        credential: cert({
+          projectId,
+          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(
+            /\\n/g,
+            "\n"
+          ),
+        }),
+        projectId,
+      });
+    } else {
       throw new Error(
-        "FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set"
+        "Firebase Admin credentials not configured. Set either FIREBASE_SERVICE_ACCOUNT_KEY or (FIREBASE_ADMIN_CLIENT_EMAIL + FIREBASE_ADMIN_PRIVATE_KEY)"
       );
     }
-
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-
-    adminApp = initializeApp({
-      credential: cert(serviceAccount),
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    });
 
     adminDb = getFirestore(adminApp);
   }
