@@ -425,6 +425,35 @@ export default function InvoiceDetailPage() {
                 </Card>
             )}
 
+            {/* Public Link */}
+            {invoice.publicToken && invoice.status !== "draft" && (
+                <Card className="p-6 mb-6">
+                    <h3 className="font-semibold mb-2">Public Invoice Link</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                        Share this link with your client to allow them to view the invoice online.
+                    </p>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            readOnly
+                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${invoice.publicToken}`}
+                            className="flex-1 px-3 py-2 border rounded-md bg-gray-50 text-sm font-mono"
+                            onClick={(e) => e.currentTarget.select()}
+                        />
+                        <Button
+                            variant="secondary"
+                            onClick={() => {
+                                const url = `${window.location.origin}/public/invoice/${invoice.publicToken}`;
+                                navigator.clipboard.writeText(url);
+                                alert('Link copied to clipboard!');
+                            }}
+                        >
+                            Copy Link
+                        </Button>
+                    </div>
+                </Card>
+            )}
+
             {/* Actions */}
             <div className="flex gap-3 justify-end">
                 <Button

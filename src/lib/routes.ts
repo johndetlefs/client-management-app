@@ -49,10 +49,10 @@ export const JOB_ROUTES = {
  */
 export const INVOICE_ROUTES = {
   LIST: WORKSPACE_ROUTES.INVOICES,
-  NEW: "/workspace/invoices/new/edit",
+  NEW: "/workspace/invoices/new",
   VIEW: (id: string) => `/workspace/invoices/${id}`,
-  EDIT: (id: string) => `/workspace/invoices/${id}/edit`,
-  PUBLIC: (token: string) => `/invoices/${token}`, // Public invoice view
+  PRINT: (id: string) => `/workspace/invoices/${id}/print`,
+  PUBLIC: (token: string) => `/public/invoice/${token}`, // Public invoice view
 } as const;
 
 /**
