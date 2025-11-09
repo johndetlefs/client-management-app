@@ -6,7 +6,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { getInvoiceForPrint } from './actions';
 import { Invoice } from '@/types/invoice';
 import { TenantSettings } from '@/types/tenant';
-import { formatCurrency, formatDate, formatTaxRate } from '@/lib/invoice-utils';
+import { formatCurrency, formatDate, formatTaxRate, getStatusLabel, getStatusColor } from '@/lib/invoice-utils';
 import { getBillableUnitLabel } from '@/types/jobItem';
 
 export default function InvoicePrintPage() {
@@ -183,84 +183,83 @@ export default function InvoicePrintPage() {
 
             {/* Invoice Content */}
             <div className="invoice-container p-8 md:p-12">
-                {/* Header */}
-                <div className="mb-8 pb-6 border-b-2 border-foreground/10">
-                    <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                            {settings?.businessName && (
-                                <h1 className="text-3xl font-bold mb-2">{settings.businessName}</h1>
+                {/* Invoice Header */}
+                <div className="flex justify-between mb-8">
+                    <div>
+                        <h2 className="text-3xl font-bold mb-2">INVOICE</h2>
+                        <div className="space-y-1 text-sm">
+                            <p>
+                                <span className="font-semibold">Invoice #:</span>{' '}
+                                {invoice.invoiceDisplayNumber || invoice.invoiceNumber || 'Draft'}
+                            </p>
+                            {invoice.issueDate && invoice.issueDate instanceof Date && (
+                                <p>
+                                    <span className="font-semibold">Issue Date:</span>{' '}
+                                    {formatDate(invoice.issueDate)}
+                                </p>
                             )}
-                            {settings?.abn && (
-                                <p className="text-sm text-foreground/60">ABN: {settings.abn}</p>
-                            )}
-                            {settings?.address && (
-                                <p className="text-sm text-foreground/60 mt-1">{settings.address}</p>
-                            )}
-                            <div className="text-sm text-foreground/60 mt-1">
-                                {settings?.phone && <span>{settings.phone}</span>}
-                                {settings?.phone && settings?.email && <span className="mx-2">|</span>}
-                                {settings?.email && <span>{settings.email}</span>}
-                            </div>
-                            {settings?.website && (
-                                <p className="text-sm text-foreground/60 mt-1">{settings.website}</p>
+                            {invoice.dueDate && invoice.dueDate instanceof Date && (
+                                <p>
+                                    <span className="font-semibold">Due Date:</span>{' '}
+                                    {formatDate(invoice.dueDate)}
+                                </p>
                             )}
                         </div>
-                        <div className="text-right">
-                            <h2 className="text-4xl font-bold mb-2">INVOICE</h2>
-                            <p className="text-xl font-semibold">{invoice.invoiceDisplayNumber || invoice.invoiceNumber || 'DRAFT'}</p>
-                        </div>
+                    </div>
+                    <div>
+                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(invoice.status)}`}>
+                            {getStatusLabel(invoice.status)}
+                        </span>
                     </div>
                 </div>
 
-                {/* Invoice Details Grid */}
+                {/* Company and Client Info */}
                 <div className="grid grid-cols-2 gap-8 mb-8">
-                    {/* Bill To */}
+                    {/* From */}
                     <div>
-                        <h3 className="text-sm font-semibold uppercase text-foreground/60 mb-2">Bill To</h3>
-                        <p className="font-semibold text-lg">{invoice.clientName}</p>
-                        {invoice.clientEmail && <p className="text-sm mt-1">{invoice.clientEmail}</p>}
-                        {invoice.clientAddress && (
-                            <div className="text-sm mt-2">
-                                {invoice.clientAddress.street && <p>{invoice.clientAddress.street}</p>}
-                                {(invoice.clientAddress.city ||
-                                    invoice.clientAddress.state ||
-                                    invoice.clientAddress.postcode) && (
-                                        <p>
-                                            {[
-                                                invoice.clientAddress.city,
-                                                invoice.clientAddress.state,
-                                                invoice.clientAddress.postcode,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(', ')}
-                                        </p>
-                                    )}
-                                {invoice.clientAddress.country && <p>{invoice.clientAddress.country}</p>}
-                            </div>
-                        )}
-                        {invoice.clientAbn && (
-                            <p className="text-sm mt-2 text-foreground/60">ABN: {invoice.clientAbn}</p>
-                        )}
+                        <h3 className="font-semibold text-sm text-foreground/60 mb-2">FROM</h3>
+                        <div className="text-sm">
+                            <p className="font-semibold">{settings?.businessName || 'Company'}</p>
+                            {settings?.abn && (
+                                <p className="text-foreground/60">ABN: {settings.abn}</p>
+                            )}
+                            {settings?.address && (
+                                <p className="text-foreground/60">{settings.address}</p>
+                            )}
+                            {settings?.phone && (
+                                <p className="text-foreground/60">{settings.phone}</p>
+                            )}
+                            {settings?.email && (
+                                <p className="text-foreground/60">{settings.email}</p>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Invoice Info */}
-                    <div className="text-right">
-                        {invoice.issueDate && invoice.issueDate instanceof Date && (
-                            <div className="mb-2">
-                                <span className="text-sm font-semibold uppercase text-foreground/60">
-                                    Issue Date
-                                </span>
-                                <p className="text-lg">{formatDate(invoice.issueDate)}</p>
-                            </div>
-                        )}
-                        {invoice.dueDate && invoice.dueDate instanceof Date && (
-                            <div>
-                                <span className="text-sm font-semibold uppercase text-foreground/60">
-                                    Due Date
-                                </span>
-                                <p className="text-lg font-semibold">{formatDate(invoice.dueDate)}</p>
-                            </div>
-                        )}
+                    {/* To */}
+                    <div>
+                        <h3 className="font-semibold text-sm text-foreground/60 mb-2">TO</h3>
+                        <div className="text-sm">
+                            <p className="font-semibold">{invoice.clientName}</p>
+                            {invoice.clientEmail && (
+                                <p className="text-foreground/60">{invoice.clientEmail}</p>
+                            )}
+                            {invoice.clientAbn && (
+                                <p className="text-foreground/60">ABN: {invoice.clientAbn}</p>
+                            )}
+                            {invoice.clientAddress && (
+                                <div className="text-foreground/60 mt-1">
+                                    {invoice.clientAddress.street && <p>{invoice.clientAddress.street}</p>}
+                                    {(invoice.clientAddress.city || invoice.clientAddress.state || invoice.clientAddress.postcode) && (
+                                        <p>
+                                            {[invoice.clientAddress.city, invoice.clientAddress.state, invoice.clientAddress.postcode]
+                                                .filter(Boolean)
+                                                .join(' ')}
+                                        </p>
+                                    )}
+                                    {invoice.clientAddress.country && <p>{invoice.clientAddress.country}</p>}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
