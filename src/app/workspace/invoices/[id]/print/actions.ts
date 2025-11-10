@@ -40,6 +40,8 @@ export async function getInvoiceForPrint(
     const invoice: Invoice = {
       id: invoiceDoc.id,
       ...invoiceData,
+      // Normalize legacy "viewed" status to "sent" for backwards compatibility
+      status: invoiceData?.status === "viewed" ? "sent" : invoiceData?.status,
       issueDate: invoiceData?.issueDate?.toDate(),
       dueDate: invoiceData?.dueDate?.toDate(),
       viewedAt: invoiceData?.viewedAt?.toDate(),

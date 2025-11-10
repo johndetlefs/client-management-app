@@ -40,6 +40,10 @@ export async function getInvoiceByToken(
     const invoiceDoc = querySnap.docs[0];
     const invoiceData = invoiceDoc.data();
 
+    // Normalize legacy "viewed" status to "sent" for backwards compatibility
+    const normalizedStatus =
+      invoiceData.status === "viewed" ? "sent" : invoiceData.status;
+
     // Convert Firestore Timestamps to Dates for serialization
     const invoice: Invoice = {
       id: invoiceDoc.id,
@@ -47,7 +51,7 @@ export async function getInvoiceByToken(
       clientId: invoiceData.clientId,
       invoiceNumber: invoiceData.invoiceNumber,
       invoiceDisplayNumber: invoiceData.invoiceDisplayNumber,
-      status: invoiceData.status,
+      status: normalizedStatus,
       issueDate: timestampToDate(invoiceData.issueDate),
       dueDate: timestampToDate(invoiceData.dueDate),
       viewedAt: timestampToDate(invoiceData.viewedAt),
@@ -72,22 +76,41 @@ export async function getInvoiceByToken(
       issuedBy: invoiceData.issuedBy,
     };
 
-    // Mark as viewed if status is 'sent' and not already viewed
-    if (invoice.status === "sent" && !invoice.viewedAt) {
-      await invoiceDoc.ref.update({
-        status: "viewed",
-        viewedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+    // Mark as viewed if not already viewed (just timestamp, don't change status)
+    // Also migrate legacy "viewed" status to "sent" if needed
+    const updates: Record<string, unknown> = {};
 
-      // Update the returned invoice object
-      invoice.status = "viewed";
+    if (!invoice.viewedAt) {
+      updates.viewedAt = FieldValue.serverTimestamp();
       invoice.viewedAt = new Date();
+    }
+
+    if (invoiceData.status === "viewed") {
+      updates.status = "sent";
+    }
+
+    if (Object.keys(updates).length > 0) {
+      updates.updatedAt = FieldValue.serverTimestamp();
+      await invoiceDoc.ref.update(updates);
     }
 
     return { success: true, data: invoice };
   } catch (error) {
     console.error("Error fetching invoice by token:", error);
+
+    // Check if it's an index error
+    if (
+      error instanceof Error &&
+      (error.message.includes("index") ||
+        error.message.includes("FAILED_PRECONDITION"))
+    ) {
+      return {
+        success: false,
+        error:
+          "Database index required. Please deploy Firestore indexes using 'npm run deploy:indexes' or contact support.",
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch invoice",

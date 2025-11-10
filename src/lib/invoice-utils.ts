@@ -134,12 +134,24 @@ export function determineInvoiceStatus(
   }
 
   // Check if overdue
-  if (dueDate && new Date() > dueDate && currentStatus !== "viewed") {
+  if (dueDate && new Date() > dueDate) {
     return "overdue";
   }
 
-  // Keep current status if sent or viewed
-  return currentStatus;
+  // Default to sent status
+  return "sent";
+}
+
+/**
+ * Normalize legacy "viewed" status to "sent"
+ * Used for backwards compatibility with invoices created before status refactor
+ */
+export function normalizeInvoiceStatus(status: string): InvoiceStatus {
+  // Handle legacy "viewed" status
+  if (status === "viewed") {
+    return "sent";
+  }
+  return status as InvoiceStatus;
 }
 
 /**
@@ -252,31 +264,39 @@ export function formatTaxRate(rate: number): string {
 /**
  * Get status badge color
  */
-export function getStatusColor(status: InvoiceStatus): string {
+export function getStatusColor(status: InvoiceStatus | string): string {
+  // Handle legacy "viewed" status for backwards compatibility
+  if (status === "viewed") {
+    return "bg-blue-100 text-blue-800"; // Treat as "sent"
+  }
+
   const colors: Record<InvoiceStatus, string> = {
     draft: "bg-gray-100 text-gray-800",
     sent: "bg-blue-100 text-blue-800",
-    viewed: "bg-purple-100 text-purple-800",
     partially_paid: "bg-yellow-100 text-yellow-800",
     paid: "bg-green-100 text-green-800",
     overdue: "bg-red-100 text-red-800",
     void: "bg-gray-100 text-gray-500 line-through",
   };
-  return colors[status];
+  return colors[status as InvoiceStatus] || colors.sent;
 }
 
 /**
  * Get status display label
  */
-export function getStatusLabel(status: InvoiceStatus): string {
+export function getStatusLabel(status: InvoiceStatus | string): string {
+  // Handle legacy "viewed" status for backwards compatibility
+  if (status === "viewed") {
+    return "Sent";
+  }
+
   const labels: Record<InvoiceStatus, string> = {
     draft: "Draft",
     sent: "Sent",
-    viewed: "Viewed",
     partially_paid: "Partially Paid",
     paid: "Paid",
     overdue: "Overdue",
     void: "Void",
   };
-  return labels[status];
+  return labels[status as InvoiceStatus] || "Sent";
 }

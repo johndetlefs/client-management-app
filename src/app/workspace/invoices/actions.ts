@@ -661,10 +661,9 @@ export async function markInvoiceViewed(
     const invoiceDoc = querySnap.docs[0];
     const invoice = { id: invoiceDoc.id, ...invoiceDoc.data() } as Invoice;
 
-    // Only update if not already viewed and status is sent
-    if (invoice.status === "sent" && !invoice.viewedAt) {
+    // Only update if not already viewed (just timestamp, don't change status)
+    if (!invoice.viewedAt) {
       await invoiceDoc.ref.update({
-        status: "viewed",
         viewedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });

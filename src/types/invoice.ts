@@ -8,7 +8,6 @@ import { BillableUnit } from "./jobItem";
 export type InvoiceStatus =
   | "draft"
   | "sent"
-  | "viewed"
   | "partially_paid"
   | "paid"
   | "overdue"

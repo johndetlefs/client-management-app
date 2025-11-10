@@ -78,6 +78,8 @@ export default function InvoiceDetailPage() {
                 setInvoice({
                     id: snapshot.id,
                     ...data,
+                    // Normalize legacy "viewed" status to "sent" for backwards compatibility
+                    status: data.status === "viewed" ? "sent" : data.status,
                     issueDate: data.issueDate?.toDate(),
                     dueDate: data.dueDate?.toDate(),
                     viewedAt: data.viewedAt?.toDate(),

@@ -86,6 +86,14 @@ vercel --prod
 
 **Verification**: Check Firebase Console → Firestore Database → Indexes tab
 
+### "9 FAILED_PRECONDITION" on Public Invoice Page
+
+**Cause**: Missing collection group index for `publicToken` field.
+
+**Solution**: Run `npm run deploy:indexes`
+
+**Verification**: Check Firebase Console → Firestore Database → Indexes tab. You should see a COLLECTION_GROUP index for `invoices` with `publicToken` field.
+
 ### "No tenant found" After Signup
 
 **Cause**: Race condition between user creation and Firestore document propagation.

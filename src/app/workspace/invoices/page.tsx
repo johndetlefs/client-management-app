@@ -43,6 +43,8 @@ export default function InvoicesPage() {
                 fetchedInvoices.push({
                     id: doc.id,
                     ...data,
+                    // Normalize legacy "viewed" status to "sent" for backwards compatibility
+                    status: data.status === "viewed" ? "sent" : data.status,
                     issueDate: data.issueDate?.toDate(),
                     dueDate: data.dueDate?.toDate(),
                     viewedAt: data.viewedAt?.toDate(),
@@ -248,8 +250,8 @@ export default function InvoicesPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className={`text-sm font-medium ${invoice.balanceDueMinor > 0 && invoice.status !== "draft"
-                                                        ? "text-red-600 dark:text-red-400"
-                                                        : "text-zinc-600 dark:text-zinc-400"
+                                                    ? "text-red-600 dark:text-red-400"
+                                                    : "text-zinc-600 dark:text-zinc-400"
                                                     }`}>
                                                     {invoice.status !== "draft" && invoice.balanceDueMinor > 0
                                                         ? formatCurrency(invoice.balanceDueMinor)
