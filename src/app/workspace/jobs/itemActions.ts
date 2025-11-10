@@ -186,17 +186,29 @@ export async function createJobItem(
 
     const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
 
-    const jobItemData = {
-      ...data,
+    // Remove undefined values to avoid Firestore errors
+    const cleanData: Record<string, unknown> = {
+      jobId: data.jobId,
+      clientId: data.clientId,
+      title: data.title,
+      unit: data.unit,
+      quantity: data.quantity,
+      unitPriceMinor: data.unitPriceMinor,
+      gstApplicable: data.gstApplicable ?? true,
+      status: data.status,
       tenantId,
-      status: "open" as const,
       createdBy: userId,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
 
+    // Only add description if it's defined
+    if (data.description !== undefined && data.description !== "") {
+      cleanData.description = data.description;
+    }
+
     console.log("[createJobItem] About to add document...");
-    const docRef = await jobItemsRef.add(jobItemData);
+    const docRef = await jobItemsRef.add(cleanData);
     console.log("[createJobItem] Success - docId:", docRef.id);
 
     return { success: true, data: docRef.id };
@@ -242,10 +254,26 @@ export async function updateJobItem(
       return { success: false, error: "Unit price cannot be negative" };
     }
 
-    const updateData = {
-      ...data,
+    // Remove undefined values to avoid Firestore errors
+    const updateData: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
+
+    // Only add fields that are defined
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) {
+      // Allow empty string to clear description
+      updateData.description = data.description || FieldValue.delete();
+    }
+    if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.quantity !== undefined) updateData.quantity = data.quantity;
+    if (data.unitPriceMinor !== undefined)
+      updateData.unitPriceMinor = data.unitPriceMinor;
+    if (data.gstApplicable !== undefined)
+      updateData.gstApplicable = data.gstApplicable;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.jobId !== undefined) updateData.jobId = data.jobId;
+    if (data.clientId !== undefined) updateData.clientId = data.clientId;
 
     await jobItemRef.update(updateData);
 

@@ -104,6 +104,14 @@ vercel --prod
 2. For `FIREBASE_ADMIN_PRIVATE_KEY`, ensure newlines are properly escaped
 3. Redeploy after updating environment variables
 
+### "Cannot use undefined as a Firestore value" Error
+
+**Cause**: Firestore doesn't allow `undefined` values in documents. All optional fields must either be omitted entirely or use `null`.
+
+**Solution**: Already fixed in code - optional fields (like `description`) are only included if they have values.
+
+**If you see this error**: Check Vercel function logs for the specific field mentioned and verify the server action properly handles optional/undefined values.
+
 ## Monitoring
 
 ### Vercel Function Logs

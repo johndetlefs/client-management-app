@@ -31,12 +31,11 @@ export function createInvoiceLineFromJobItem(
   const taxMinor = gstApplicable ? Math.round(subtotalMinor * taxRate) : 0;
   const totalMinor = subtotalMinor + taxMinor;
 
-  return {
+  const line: InvoiceLine = {
     jobItemId: item.id,
     jobId: item.jobId,
     jobTitle,
     title: item.title,
-    description: item.description,
     unit: item.unit,
     quantity: item.quantity,
     unitPriceMinor: item.unitPriceMinor,
@@ -45,6 +44,13 @@ export function createInvoiceLineFromJobItem(
     taxMinor,
     totalMinor,
   };
+
+  // Only add description if it exists and is not empty
+  if (item.description && item.description.trim() !== "") {
+    line.description = item.description;
+  }
+
+  return line;
 }
 
 /**
