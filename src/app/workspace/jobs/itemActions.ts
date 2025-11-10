@@ -67,7 +67,21 @@ export async function getJobItems(
     return { success: true, data: jobItems };
   } catch (error) {
     console.error("Error fetching job items:", error);
-    return { success: false, error: "Failed to fetch job items" };
+
+    // Check if it's an index error
+    if (error instanceof Error && error.message.includes("index")) {
+      return {
+        success: false,
+        error:
+          "Database index required. Please deploy Firestore indexes or contact support.",
+      };
+    }
+
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to fetch job items",
+    };
   }
 }
 
@@ -91,7 +105,23 @@ export async function getOpenJobItemsByClient(
     return { success: true, data: jobItems };
   } catch (error) {
     console.error("Error fetching open job items:", error);
-    return { success: false, error: "Failed to fetch open job items" };
+
+    // Check if it's an index error
+    if (error instanceof Error && error.message.includes("index")) {
+      return {
+        success: false,
+        error:
+          "Database index required. Please deploy Firestore indexes or contact support.",
+      };
+    }
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch open job items",
+    };
   }
 }
 

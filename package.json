@@ -10,7 +10,9 @@
     "emulators:clear": "rm -rf emulator-data && echo 'Emulator data cleared!'",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy:indexes": "firebase deploy --only firestore:indexes",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage"
   },
   "dependencies": {
     "firebase": "^12.5.0",
