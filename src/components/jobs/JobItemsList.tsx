@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { getTenantSettings } from '@/app/workspace/settings/actions';
-import { getJobItems, createJobItem, updateJobItem, deleteJobItem } from '@/app/workspace/jobs/itemActions';
+import { getJobItems, createJobItem, updateJobItem, deleteJobItem, moveJobItemOrder } from '@/app/workspace/jobs/itemActions';
 import type { JobItem, BillableUnit, JobItemFormData } from '@/types/jobItem';
 import { computeLineSubtotal, computeTaxAmount, formatMinorUnits, getBillableUnitLabel } from '@/types/jobItem';
 
@@ -162,6 +162,15 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
             setRefreshTrigger(prev => prev + 1);
         } else {
             alert(`Failed to delete item: ${result.error}`);
+        }
+    };
+
+    const handleMoveItem = async (itemId: string, direction: 'up' | 'down') => {
+        const result = await moveJobItemOrder(tenantId, jobId, itemId, direction);
+        if (result.success) {
+            setRefreshTrigger(prev => prev + 1);
+        } else {
+            alert(`Failed to reorder item: ${result.error}`);
         }
     };
 
@@ -342,7 +351,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                     </p>
                 ) : (
                     <div className="space-y-3">
-                        {jobItems.map((item) => {
+                        {jobItems.map((item, index) => {
                             const subtotal = computeLineSubtotal(item);
                             const tax = computeTaxAmount(item, defaultTaxRate);
                             const total = subtotal + tax;
@@ -372,7 +381,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="text-right flex-shrink-0">
+                                        <div className="text-right shrink-0">
                                             <div className="font-medium text-foreground">
                                                 {formatMinorUnits(total)}
                                             </div>
@@ -388,6 +397,26 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
                                     </div>
                                     {item.status === 'open' && (
                                         <div className="flex gap-2 mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+                                            <Button
+                                                variant="icon"
+                                                onClick={() => handleMoveItem(item.id, 'up')}
+                                                className="text-xs"
+                                                disabled={index === 0}
+                                                title="Move Up"
+                                                aria-label="Move Up"
+                                            >
+                                                ▲
+                                            </Button>
+                                            <Button
+                                                variant="icon"
+                                                onClick={() => handleMoveItem(item.id, 'down')}
+                                                className="text-xs"
+                                                disabled={index === jobItems.length - 1}
+                                                title="Move Down"
+                                                aria-label="Move Down"
+                                            >
+                                                ▼
+                                            </Button>
                                             <Button
                                                 variant="secondary"
                                                 onClick={() => startEdit(item)}

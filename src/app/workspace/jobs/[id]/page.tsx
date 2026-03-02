@@ -402,9 +402,13 @@ function CreateQuoteModal({
         setSaving(true);
         setError(null);
 
+        const orderedSelectedItemIds = items
+            .filter((item) => selectedItemIds.includes(item.id))
+            .map((item) => item.id);
+
         const result = await createQuoteFromJob(tenantId, userId, {
             jobId,
-            jobItemIds: selectedItemIds,
+            jobItemIds: orderedSelectedItemIds,
         });
 
         if (!result.success) {

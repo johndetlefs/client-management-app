@@ -23,7 +23,7 @@ export function generatePublicToken(): string {
 export function createInvoiceLineFromJobItem(
   item: JobItem,
   jobTitle: string,
-  taxRate: number
+  taxRate: number,
 ): InvoiceLine {
   const subtotalMinor = Math.round(item.quantity * item.unitPriceMinor);
   // Default to true for legacy items that don't have gstApplicable field
@@ -58,7 +58,7 @@ export function createInvoiceLineFromJobItem(
  */
 export function computeInvoiceTotals(
   lines: InvoiceLine[],
-  taxRate: number
+  taxRate: number,
 ): {
   subtotalMinor: number;
   taxMinor: number;
@@ -102,7 +102,7 @@ export function computeInvoiceTotals(
  */
 export function computeBalanceDue(
   totalMinor: number,
-  amountPaidMinor: number
+  amountPaidMinor: number,
 ): number {
   return Math.max(0, totalMinor - amountPaidMinor);
 }
@@ -114,7 +114,7 @@ export function determineInvoiceStatus(
   currentStatus: InvoiceStatus,
   totalMinor: number,
   amountPaidMinor: number,
-  dueDate?: Date
+  dueDate?: Date,
 ): InvoiceStatus {
   // Don't change status if void or draft
   if (currentStatus === "void" || currentStatus === "draft") {
@@ -224,9 +224,20 @@ export function generateInvoiceCode(): string {
  */
 export function formatInvoiceDisplayNumber(
   shortcode: string,
-  code: string
+  code: string,
 ): string {
   return `${shortcode.toUpperCase()}-${code}`;
+}
+
+/**
+ * Format quote display number with Q prefix + client shortcode + sequence
+ * Example: Q-LEVO-001
+ */
+export function formatQuoteDisplayNumber(
+  shortcode: string,
+  number: number,
+): string {
+  return `Q-${shortcode.toUpperCase()}-${number.toString().padStart(3, "0")}`;
 }
 
 /**
@@ -234,7 +245,7 @@ export function formatInvoiceDisplayNumber(
  */
 export function formatCurrency(
   minorUnits: number,
-  currency: string = "AUD"
+  currency: string = "AUD",
 ): string {
   const major = minorUnits / 100;
   return new Intl.NumberFormat("en-AU", {

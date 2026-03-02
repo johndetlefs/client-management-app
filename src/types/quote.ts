@@ -32,6 +32,7 @@ export interface Quote {
   taxMinor?: number;
   clientName: string;
   jobTitle?: string;
+  notes?: string;
   totalMinor: number;
   createdAt: Timestamp | Date;
   updatedAt: Timestamp | Date;

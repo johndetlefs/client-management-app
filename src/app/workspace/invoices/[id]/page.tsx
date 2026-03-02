@@ -600,7 +600,11 @@ function ItemSelectorModal({
 
         setAdding(true);
         try {
-            const result = await addItemsToInvoice(tenantId, invoiceId, Array.from(selectedIds));
+            const orderedSelectedIds = items
+                .filter((item) => selectedIds.has(item.id))
+                .map((item) => item.id);
+
+            const result = await addItemsToInvoice(tenantId, invoiceId, orderedSelectedIds);
             if (result.success) {
                 onClose();
             } else {

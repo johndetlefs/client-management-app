@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCurrentUserRole, getCurrentUserTenantId } from "@/lib/tenant";
 import { db } from "@/lib/firebase";
@@ -168,7 +169,12 @@ export default function QuotesPage() {
                                 {filteredQuotes.map((quote) => (
                                     <tr key={quote.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
-                                            {quote.quoteDisplayNumber || quote.quoteNumber || "Draft"}
+                                            <Link
+                                                href={`/workspace/quotes/${quote.id}`}
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                {quote.quoteDisplayNumber || quote.quoteNumber || "Draft"}
+                                            </Link>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                                             {quote.clientName}

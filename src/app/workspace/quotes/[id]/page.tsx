@@ -1,0 +1,299 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCurrentUserTenantId } from "@/lib/tenant";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { formatCurrency, formatDate } from "@/lib/invoice-utils";
+import { getBillableUnitLabel } from "@/types/jobItem";
+import { Quote } from "@/types/quote";
+import { getQuoteForEdit, updateQuoteDetails } from "../actions";
+import { getTenantSettings } from "@/app/workspace/settings/actions";
+
+export default function QuoteDetailPage() {
+    const { user } = useAuth();
+    const params = useParams();
+    const quoteId = params.id as string;
+
+    const [tenantId, setTenantId] = useState<string | null>(null);
+    const [quote, setQuote] = useState<Quote | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [quoteDisplayNumber, setQuoteDisplayNumber] = useState("");
+    const [notes, setNotes] = useState("");
+    const [taxLabel, setTaxLabel] = useState("Tax");
+
+    const canEdit = quote?.status === "draft";
+    const hasTaxColumn = quote?.lines?.some((line) => line.gstApplicable) || false;
+
+    useEffect(() => {
+        const loadQuote = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            setError(null);
+
+            const resolvedTenantId = await getCurrentUserTenantId();
+            if (!resolvedTenantId) {
+                setError("Unable to determine your tenant");
+                setLoading(false);
+                return;
+            }
+
+            setTenantId(resolvedTenantId);
+
+            const settingsResult = await getTenantSettings(resolvedTenantId);
+            if (
+                settingsResult.success &&
+                settingsResult.data?.tax?.taxType &&
+                settingsResult.data.tax.taxType !== "None"
+            ) {
+                setTaxLabel(settingsResult.data.tax.taxType);
+            } else {
+                setTaxLabel("Tax");
+            }
+
+            const result = await getQuoteForEdit(resolvedTenantId, user.uid, quoteId);
+            if (!result.success) {
+                setError(result.error);
+                setLoading(false);
+                return;
+            }
+
+            setQuote(result.data);
+            setQuoteDisplayNumber(
+                result.data.quoteDisplayNumber || result.data.quoteNumber || "",
+            );
+            setNotes(result.data.notes || "");
+            setLoading(false);
+        };
+
+        loadQuote();
+    }, [quoteId, user]);
+
+    const hasChanges = useMemo(() => {
+        if (!quote) {
+            return false;
+        }
+
+        const currentDisplay = quote.quoteDisplayNumber || quote.quoteNumber || "";
+        const currentNotes = quote.notes || "";
+        return (
+            quoteDisplayNumber.trim() !== currentDisplay.trim() ||
+            notes.trim() !== currentNotes.trim()
+        );
+    }, [notes, quote, quoteDisplayNumber]);
+
+    const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!tenantId || !user || !quote || !canEdit) {
+            return;
+        }
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            const result = await updateQuoteDetails(tenantId, user.uid, quote.id, {
+                quoteDisplayNumber,
+                notes,
+            });
+
+            if (!result.success) {
+                setError(result.error);
+                return;
+            }
+
+            setQuote(result.data);
+            setQuoteDisplayNumber(
+                result.data.quoteDisplayNumber || result.data.quoteNumber || "",
+            );
+            setNotes(result.data.notes || "");
+            alert("Quote updated successfully.");
+        } catch (updateError) {
+            console.error("Error updating quote:", updateError);
+            setError("Failed to update quote");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="p-8">
+                <p>Loading quote...</p>
+            </div>
+        );
+    }
+
+    if (!quote) {
+        return (
+            <div className="p-8 max-w-3xl mx-auto">
+                <Card className="p-8 text-center">
+                    <h1 className="text-2xl font-bold mb-2">Quote Not Found</h1>
+                    <p className="text-foreground/70 mb-4">
+                        {error || "This quote does not exist or you do not have access."}
+                    </p>
+                    <Link href="/workspace/quotes">
+                        <Button>Back to Quotes</Button>
+                    </Link>
+                </Card>
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-8 max-w-5xl mx-auto">
+            <div className="mb-6">
+                <Link href="/workspace/quotes" className="text-blue-600 hover:underline mb-2 inline-block">
+                    ← Back to Quotes
+                </Link>
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold">
+                            {quote.quoteDisplayNumber || quote.quoteNumber || "Draft Quote"}
+                        </h1>
+                        <p className="text-gray-600 mt-1">{quote.clientName}</p>
+                    </div>
+                    <span className="inline-flex px-3 py-1 text-sm font-medium rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 capitalize">
+                        {quote.status}
+                    </span>
+                </div>
+            </div>
+
+            {error && (
+                <Card className="mb-6 p-4 border-red-200 dark:border-red-800">
+                    <p className="text-red-600 dark:text-red-400">{error}</p>
+                </Card>
+            )}
+
+            <Card className="p-6 mb-6">
+                <form onSubmit={handleSave}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Input
+                            label="Quote Number"
+                            value={quoteDisplayNumber}
+                            onChange={(event) => setQuoteDisplayNumber(event.target.value)}
+                            disabled={!canEdit || saving}
+                            maxLength={40}
+                            required
+                        />
+
+                        <div>
+                            <p className="text-sm font-medium text-foreground mb-2">Created</p>
+                            <p className="text-sm text-foreground/80">
+                                {formatDate(quote.createdAt instanceof Date ? quote.createdAt : new Date())}
+                            </p>
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium mb-2">Notes</label>
+                            <textarea
+                                value={notes}
+                                onChange={(event) => setNotes(event.target.value)}
+                                disabled={!canEdit || saving}
+                                rows={4}
+                                maxLength={2000}
+                                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-foreground/20 bg-white dark:bg-zinc-900"
+                                placeholder="Optional notes for this quote"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t flex items-center justify-between gap-3">
+                        <p className="text-sm text-foreground/70">
+                            {canEdit
+                                ? "Draft quotes are editable."
+                                : "This quote is no longer editable."}
+                        </p>
+                        <Button
+                            type="submit"
+                            disabled={!canEdit || saving || !hasChanges}
+                        >
+                            {saving ? "Saving..." : "Save Changes"}
+                        </Button>
+                    </div>
+                </form>
+            </Card>
+
+            <Card className="p-6">
+                <h2 className="text-lg font-semibold mb-4">Line Items</h2>
+                {!quote.lines || quote.lines.length === 0 ? (
+                    <p className="text-gray-500">No line items in this quote.</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full table-fixed">
+                            <thead className="border-b">
+                                <tr className="text-left text-sm text-gray-600">
+                                    <th className="pb-3 px-2" style={{ width: "40%" }}>Description</th>
+                                    <th className="pb-3 px-2 text-center" style={{ width: "10%" }}>Price</th>
+                                    <th className="pb-3 px-2 text-center" style={{ width: "8%" }}>Qty</th>
+                                    <th className="pb-3 px-2 text-center" style={{ width: "10%" }}>Unit</th>
+                                    <th className="pb-3 px-2 text-center" style={{ width: "11%" }}>Subtotal</th>
+                                    {hasTaxColumn && (
+                                        <th className="pb-3 px-2 text-center" style={{ width: "10%" }}>
+                                            {taxLabel}
+                                        </th>
+                                    )}
+                                    <th className="pb-3 px-2 text-center" style={{ width: "11%" }}>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {quote.lines.map((line) => (
+                                    <tr key={line.jobItemId} className="border-b border-foreground/20">
+                                        <td className="py-4 px-2">
+                                            <p className="font-medium">{line.title}</p>
+                                            {line.description && (
+                                                <p className="text-sm text-gray-600">{line.description}</p>
+                                            )}
+                                            <p className="text-xs text-gray-500">Job: {line.jobTitle}</p>
+                                        </td>
+                                        <td className="py-4 px-2 text-center">{formatCurrency(line.unitPriceMinor)}</td>
+                                        <td className="py-4 px-2 text-center">{line.quantity}</td>
+                                        <td className="py-4 px-2 text-center">
+                                            {getBillableUnitLabel(line.unit, line.quantity)}
+                                        </td>
+                                        <td className="py-4 px-2 text-center">{formatCurrency(line.subtotalMinor)}</td>
+                                        {hasTaxColumn && (
+                                            <td className="py-4 px-2 text-center">
+                                                {line.gstApplicable && line.taxMinor > 0
+                                                    ? formatCurrency(line.taxMinor)
+                                                    : "—"}
+                                            </td>
+                                        )}
+                                        <td className="py-4 px-2 text-center font-medium">
+                                            {formatCurrency(line.totalMinor)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                <div className="mt-6 pt-4 border-t max-w-sm ml-auto space-y-2">
+                    <div className="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span className="font-medium">{formatCurrency(quote.subtotalMinor || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span>{taxLabel}:</span>
+                        <span className="font-medium">{formatCurrency(quote.taxMinor || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                        <span>Total:</span>
+                        <span>{formatCurrency(quote.totalMinor)}</span>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+}

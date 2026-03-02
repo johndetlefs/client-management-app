@@ -3,6 +3,7 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { Invoice, InvoiceFormData, InvoiceCounter } from "@/types/invoice";
 import { JobItem, ItemStatus } from "@/types/jobItem";
+import { sortJobItems } from "@/types/jobItem";
 import { Client } from "@/types/client";
 import { Job } from "@/types/job";
 import { TenantSettings } from "@/types/tenant";
@@ -36,7 +37,7 @@ function timestampToDate(timestamp: unknown): Date | undefined {
 export async function createDraftInvoice(
   tenantId: string,
   userId: string,
-  data: InvoiceFormData
+  data: InvoiceFormData,
 ): Promise<ActionResult<string>> {
   try {
     // Fetch client data
@@ -112,7 +113,7 @@ export async function createDraftInvoice(
  */
 export async function getOpenJobItemsForClient(
   tenantId: string,
-  clientId: string
+  clientId: string,
 ): Promise<ActionResult<Array<JobItem & { jobTitle: string }>>> {
   try {
     const itemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
@@ -150,7 +151,7 @@ export async function getOpenJobItemsForClient(
       });
       await batch.commit();
       console.log(
-        `[getOpenJobItemsForClient] Cleaned up ${itemsToCleanup.length} stale locks`
+        `[getOpenJobItemsForClient] Cleaned up ${itemsToCleanup.length} stale locks`,
       );
     }
 
@@ -169,7 +170,9 @@ export async function getOpenJobItemsForClient(
     await Promise.all(jobPromises);
 
     // Combine items with job titles and convert Timestamps to Dates
-    const itemsWithJobTitles = items.map((item) => {
+    const sortedItems = sortJobItems(items);
+
+    const itemsWithJobTitles = sortedItems.map((item) => {
       const createdAt =
         item.createdAt instanceof Date
           ? item.createdAt
@@ -208,7 +211,7 @@ export async function getOpenJobItemsForClient(
 export async function addItemsToInvoice(
   tenantId: string,
   invoiceId: string,
-  jobItemIds: string[]
+  jobItemIds: string[],
 ): Promise<ActionResult<void>> {
   try {
     await adminDb.runTransaction(async (transaction) => {
@@ -237,10 +240,10 @@ export async function addItemsToInvoice(
 
       // Fetch and validate job items
       const itemRefs = jobItemIds.map((id) =>
-        adminDb.collection(`tenants/${tenantId}/jobItems`).doc(id)
+        adminDb.collection(`tenants/${tenantId}/jobItems`).doc(id),
       );
       const itemSnaps = await Promise.all(
-        itemRefs.map((ref) => transaction.get(ref))
+        itemRefs.map((ref) => transaction.get(ref)),
       );
 
       const jobIds = new Set<string>();
@@ -263,14 +266,14 @@ export async function addItemsToInvoice(
         // Validate item is open and not locked
         if (item.status !== "open") {
           throw new Error(
-            `Job item "${item.title}" is not available (status: ${item.status})`
+            `Job item "${item.title}" is not available (status: ${item.status})`,
           );
         }
 
         // Check if item has a valid lock (lock exists and has required fields)
         if (item.lock && item.lock.invoiceId && item.lock.at) {
           throw new Error(
-            `Job item "${item.title}" is already locked to another invoice`
+            `Job item "${item.title}" is already locked to another invoice`,
           );
         }
 
@@ -281,10 +284,10 @@ export async function addItemsToInvoice(
       // Fetch job titles
       const jobTitles = new Map<string, string>();
       const jobRefs = Array.from(jobIds).map((jobId) =>
-        adminDb.collection(`tenants/${tenantId}/jobs`).doc(jobId)
+        adminDb.collection(`tenants/${tenantId}/jobs`).doc(jobId),
       );
       const jobSnaps = await Promise.all(
-        jobRefs.map((ref) => transaction.get(ref))
+        jobRefs.map((ref) => transaction.get(ref)),
       );
 
       jobSnaps.forEach((jobSnap) => {
@@ -299,8 +302,8 @@ export async function addItemsToInvoice(
         createInvoiceLineFromJobItem(
           item,
           jobTitles.get(item.jobId) || "Unknown Job",
-          taxRate
-        )
+          taxRate,
+        ),
       );
 
       // Combine with existing lines
@@ -310,7 +313,7 @@ export async function addItemsToInvoice(
       const totals = computeInvoiceTotals(allLines, taxRate);
       const balanceDueMinor = computeBalanceDue(
         totals.totalMinor,
-        invoice.amountPaidMinor
+        invoice.amountPaidMinor,
       );
 
       // Update invoice
@@ -358,7 +361,7 @@ export async function addItemsToInvoice(
 export async function removeItemFromInvoice(
   tenantId: string,
   invoiceId: string,
-  jobItemId: string
+  jobItemId: string,
 ): Promise<ActionResult<void>> {
   try {
     await adminDb.runTransaction(async (transaction) => {
@@ -387,17 +390,17 @@ export async function removeItemFromInvoice(
 
       // Remove line from invoice
       const updatedLines = invoice.lines.filter(
-        (line) => line.jobItemId !== jobItemId
+        (line) => line.jobItemId !== jobItemId,
       );
       const updatedLockedIds = invoice.lockedJobItemIds.filter(
-        (id) => id !== jobItemId
+        (id) => id !== jobItemId,
       );
 
       // Compute new totals
       const totals = computeInvoiceTotals(updatedLines, taxRate);
       const balanceDueMinor = computeBalanceDue(
         totals.totalMinor,
-        invoice.amountPaidMinor
+        invoice.amountPaidMinor,
       );
 
       // Update invoice
@@ -444,7 +447,7 @@ export async function removeItemFromInvoice(
 async function getNextInvoiceNumber(
   tenantId: string,
   year: number,
-  transaction: FirebaseFirestore.Transaction
+  transaction: FirebaseFirestore.Transaction,
 ): Promise<number> {
   const counterRef = adminDb
     .collection(`tenants/${tenantId}/counters`)
@@ -481,7 +484,7 @@ async function getNextInvoiceNumber(
 export async function issueInvoice(
   tenantId: string,
   invoiceId: string,
-  userId: string
+  userId: string,
 ): Promise<ActionResult<void>> {
   try {
     await adminDb.runTransaction(async (transaction) => {
@@ -522,7 +525,7 @@ export async function issueInvoice(
       const invoiceNumber = await getNextInvoiceNumber(
         tenantId,
         year,
-        transaction
+        transaction,
       );
       const formattedNumber = formatInvoiceNumber(year, invoiceNumber);
 
@@ -534,7 +537,7 @@ export async function issueInvoice(
         const code = generateInvoiceCode();
         invoiceDisplayNumber = formatInvoiceDisplayNumber(
           client.shortcode,
-          code
+          code,
         );
       } else {
         // Fallback to sequential number if no shortcode
@@ -580,7 +583,7 @@ export async function issueInvoice(
 export async function updateInvoicePayment(
   tenantId: string,
   invoiceId: string,
-  amountPaidMinor: number
+  amountPaidMinor: number,
 ): Promise<ActionResult<void>> {
   try {
     const invoiceRef = adminDb
@@ -610,7 +613,7 @@ export async function updateInvoicePayment(
 
     const balanceDueMinor = computeBalanceDue(
       invoice.totalMinor,
-      amountPaidMinor
+      amountPaidMinor,
     );
     const dueDate = timestampToDate(invoice.dueDate);
 
@@ -618,7 +621,7 @@ export async function updateInvoicePayment(
       invoice.status,
       invoice.totalMinor,
       amountPaidMinor,
-      dueDate
+      dueDate,
     );
 
     await invoiceRef.update({
@@ -644,7 +647,7 @@ export async function updateInvoicePayment(
  */
 export async function markInvoiceViewed(
   invoiceId: string,
-  publicToken: string
+  publicToken: string,
 ): Promise<ActionResult<void>> {
   try {
     // Find invoice by public token
@@ -688,7 +691,7 @@ export async function markInvoiceViewed(
 export async function voidInvoice(
   tenantId: string,
   invoiceId: string,
-  userRole: string
+  userRole: string,
 ): Promise<ActionResult<void>> {
   try {
     if (userRole !== "owner") {
@@ -723,7 +726,7 @@ export async function voidInvoice(
 
       // Unlock all locked job items, regardless of invoice status
       console.log(
-        `[voidInvoice] Unlocking ${invoice.lockedJobItemIds.length} items`
+        `[voidInvoice] Unlocking ${invoice.lockedJobItemIds.length} items`,
       );
       for (const jobItemId of invoice.lockedJobItemIds) {
         const itemRef = adminDb
@@ -760,7 +763,7 @@ export async function voidInvoice(
  */
 export async function deleteDraftInvoice(
   tenantId: string,
-  invoiceId: string
+  invoiceId: string,
 ): Promise<ActionResult<void>> {
   try {
     await adminDb.runTransaction(async (transaction) => {
