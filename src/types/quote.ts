@@ -1,7 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 import { BillableUnit } from "./jobItem";
 
-export type QuoteStatus = "draft" | "sent";
+export type QuoteStatus = "draft" | "sent" | "accepted" | "cancelled";
 
 export interface QuoteLine {
   jobItemId: string;
@@ -34,6 +34,7 @@ export interface Quote {
   jobTitle?: string;
   notes?: string;
   totalMinor: number;
+  acceptedAt?: Timestamp | Date;
   createdAt: Timestamp | Date;
   updatedAt: Timestamp | Date;
 }

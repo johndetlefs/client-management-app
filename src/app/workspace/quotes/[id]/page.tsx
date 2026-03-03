@@ -8,10 +8,15 @@ import { getCurrentUserTenantId } from "@/lib/tenant";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { formatCurrency, formatDate } from "@/lib/invoice-utils";
+import {
+    formatCurrency,
+    formatDate,
+    getQuoteStatusColor,
+    getQuoteStatusLabel,
+} from "@/lib/invoice-utils";
 import { getBillableUnitLabel } from "@/types/jobItem";
 import { Quote } from "@/types/quote";
-import { getQuoteForEdit, updateQuoteDetails } from "../actions";
+import { getQuoteForEdit, updateQuoteDetails, updateQuoteStatus } from "../actions";
 import { getTenantSettings } from "@/app/workspace/settings/actions";
 
 export default function QuoteDetailPage() {
@@ -23,6 +28,7 @@ export default function QuoteDetailPage() {
     const [quote, setQuote] = useState<Quote | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [quoteDisplayNumber, setQuoteDisplayNumber] = useState("");
     const [notes, setNotes] = useState("");
@@ -126,6 +132,41 @@ export default function QuoteDetailPage() {
         }
     };
 
+    const handleStatusChange = async (nextStatus: "sent" | "accepted" | "cancelled") => {
+        if (!tenantId || !user || !quote) {
+            return;
+        }
+
+        const confirmationMessage =
+            nextStatus === "sent"
+                ? "Mark this quote as sent?"
+                : nextStatus === "accepted"
+                    ? "Mark this quote as accepted?"
+                    : "Cancel this quote?";
+
+        if (!confirm(confirmationMessage)) {
+            return;
+        }
+
+        setUpdatingStatus(true);
+        setError(null);
+
+        try {
+            const result = await updateQuoteStatus(tenantId, user.uid, quote.id, nextStatus);
+            if (!result.success) {
+                setError(result.error);
+                return;
+            }
+
+            setQuote(result.data);
+        } catch (statusError) {
+            console.error("Error updating quote status:", statusError);
+            setError("Failed to update quote status");
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="p-8">
@@ -163,8 +204,8 @@ export default function QuoteDetailPage() {
                         </h1>
                         <p className="text-gray-600 mt-1">{quote.clientName}</p>
                     </div>
-                    <span className="inline-flex px-3 py-1 text-sm font-medium rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 capitalize">
-                        {quote.status}
+                    <span className={`inline-flex px-3 py-1 text-sm font-medium rounded ${getQuoteStatusColor(quote.status)}`}>
+                        {getQuoteStatusLabel(quote.status)}
                     </span>
                 </div>
             </div>
@@ -192,6 +233,16 @@ export default function QuoteDetailPage() {
                             <p className="text-sm text-foreground/80">
                                 {formatDate(quote.createdAt instanceof Date ? quote.createdAt : new Date())}
                             </p>
+                            {quote.acceptedAt && (
+                                <p className="text-sm text-foreground/80 mt-2">
+                                    <span className="font-medium">Accepted:</span>{" "}
+                                    {formatDate(
+                                        quote.acceptedAt instanceof Date
+                                            ? quote.acceptedAt
+                                            : new Date(),
+                                    )}
+                                </p>
+                            )}
                         </div>
 
                         <div className="md:col-span-2">
@@ -214,12 +265,44 @@ export default function QuoteDetailPage() {
                                 ? "Draft quotes are editable."
                                 : "This quote is no longer editable."}
                         </p>
-                        <Button
-                            type="submit"
-                            disabled={!canEdit || saving || !hasChanges}
-                        >
-                            {saving ? "Saving..." : "Save Changes"}
-                        </Button>
+                        <div className="flex gap-2">
+                            {quote.status === "draft" && (
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => handleStatusChange("sent")}
+                                    disabled={saving || updatingStatus}
+                                >
+                                    Mark as Sent
+                                </Button>
+                            )}
+                            {quote.status === "sent" && (
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => handleStatusChange("accepted")}
+                                    disabled={saving || updatingStatus}
+                                >
+                                    Mark as Accepted
+                                </Button>
+                            )}
+                            {quote.status !== "cancelled" && (
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => handleStatusChange("cancelled")}
+                                    disabled={saving || updatingStatus}
+                                >
+                                    Cancel Quote
+                                </Button>
+                            )}
+                            <Button
+                                type="submit"
+                                disabled={!canEdit || saving || updatingStatus || !hasChanges}
+                            >
+                                {saving ? "Saving..." : "Save Changes"}
+                            </Button>
+                        </div>
                     </div>
                 </form>
             </Card>

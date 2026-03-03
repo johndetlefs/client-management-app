@@ -4,6 +4,7 @@ import {
   TaxBreakdown,
   InvoiceStatus,
 } from "@/types/invoice";
+import { QuoteStatus } from "@/types/quote";
 import { JobItem } from "@/types/jobItem";
 
 /**
@@ -310,4 +311,32 @@ export function getStatusLabel(status: InvoiceStatus | string): string {
     void: "Void",
   };
   return labels[status as InvoiceStatus] || "Sent";
+}
+
+/**
+ * Get quote status badge color
+ */
+export function getQuoteStatusColor(status: QuoteStatus | string): string {
+  const colors: Record<QuoteStatus, string> = {
+    draft: "bg-gray-100 text-gray-800",
+    sent: "bg-blue-100 text-blue-800",
+    accepted: "bg-green-100 text-green-800",
+    cancelled: "bg-gray-100 text-gray-500 line-through",
+  };
+
+  return colors[status as QuoteStatus] || colors.draft;
+}
+
+/**
+ * Get quote status display label
+ */
+export function getQuoteStatusLabel(status: QuoteStatus | string): string {
+  const labels: Record<QuoteStatus, string> = {
+    draft: "Draft",
+    sent: "Sent",
+    accepted: "Accepted",
+    cancelled: "Cancelled",
+  };
+
+  return labels[status as QuoteStatus] || "Draft";
 }

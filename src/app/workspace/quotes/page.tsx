@@ -7,7 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCurrentUserRole, getCurrentUserTenantId } from "@/lib/tenant";
 import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/Card";
-import { formatCurrency, formatDate } from "@/lib/invoice-utils";
+import {
+    formatCurrency,
+    formatDate,
+    getQuoteStatusColor,
+    getQuoteStatusLabel,
+} from "@/lib/invoice-utils";
 import { Quote } from "@/types/quote";
 
 function toDate(value: unknown): Date | undefined {
@@ -183,8 +188,8 @@ export default function QuotesPage() {
                                             {quote.jobTitle || "—"}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 capitalize">
-                                                {quote.status}
+                                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${getQuoteStatusColor(quote.status)}`}>
+                                                {getQuoteStatusLabel(quote.status)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-600 dark:text-zinc-400">

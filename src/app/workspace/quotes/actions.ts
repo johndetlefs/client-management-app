@@ -91,6 +91,11 @@ function mapQuoteDocument(
   tenantId: string,
   docData: FirebaseFirestore.DocumentData,
 ): Quote {
+  const status = (docData.status as Quote["status"]) || "draft";
+  const acceptedAt =
+    timestampToDate(docData.acceptedAt) ||
+    (status === "accepted" ? timestampToDate(docData.updatedAt) : undefined);
+
   const lines = Array.isArray(docData.lines)
     ? docData.lines.map((line) => mapQuoteLine(line))
     : [];
@@ -106,7 +111,7 @@ function mapQuoteDocument(
       typeof docData.quoteDisplayNumber === "string"
         ? docData.quoteDisplayNumber
         : undefined,
-    status: (docData.status as Quote["status"]) || "draft",
+    status,
     lines,
     selectedJobItemIds: Array.isArray(docData.selectedJobItemIds)
       ? docData.selectedJobItemIds.filter(
@@ -124,6 +129,7 @@ function mapQuoteDocument(
       typeof docData.jobTitle === "string" ? docData.jobTitle : undefined,
     notes: typeof docData.notes === "string" ? docData.notes : undefined,
     totalMinor: typeof docData.totalMinor === "number" ? docData.totalMinor : 0,
+    acceptedAt,
     createdAt: timestampToDate(docData.createdAt) || new Date(),
     updatedAt: timestampToDate(docData.updatedAt) || new Date(),
   };
@@ -550,6 +556,71 @@ export async function updateQuoteDetails(
         error instanceof Error
           ? error.message
           : "Failed to update quote details",
+    };
+  }
+}
+
+export async function updateQuoteStatus(
+  tenantId: string,
+  userId: string,
+  quoteId: string,
+  nextStatus: "sent" | "accepted" | "cancelled",
+): Promise<ActionResult<Quote>> {
+  try {
+    const permission = await ensureUserCanManageQuotes(tenantId, userId);
+    if (!permission.success) {
+      return permission;
+    }
+
+    const quoteRef = adminDb.doc(`tenants/${tenantId}/quotes/${quoteId}`);
+
+    await adminDb.runTransaction(async (transaction) => {
+      const quoteSnap = await transaction.get(quoteRef);
+
+      if (!quoteSnap.exists) {
+        throw new Error("Quote not found");
+      }
+
+      const quoteData = quoteSnap.data();
+      const currentStatus = (quoteData?.status as Quote["status"]) || "draft";
+
+      if (currentStatus === "cancelled") {
+        throw new Error("Cancelled quotes cannot be updated");
+      }
+
+      if (currentStatus === nextStatus) {
+        return;
+      }
+
+      if (nextStatus === "sent" && currentStatus !== "draft") {
+        throw new Error("Only draft quotes can be marked as sent");
+      }
+
+      if (nextStatus === "accepted" && currentStatus !== "sent") {
+        throw new Error("Only sent quotes can be marked as accepted");
+      }
+
+      const statusUpdate: Record<string, unknown> = {
+        status: nextStatus,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      if (nextStatus === "accepted") {
+        statusUpdate.acceptedAt = FieldValue.serverTimestamp();
+      }
+
+      transaction.update(quoteRef, statusUpdate);
+    });
+
+    return getQuoteForEdit(tenantId, userId, quoteId);
+  } catch (error) {
+    console.error("Error updating quote status:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update quote status",
     };
   }
 }
