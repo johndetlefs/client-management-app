@@ -88,6 +88,11 @@ export default function PublicInvoicePage() {
     }
 
     const taxLabel = tenantSettings?.taxLabel || 'GST';
+    const invoiceTitle = invoice.lines.some(
+        (line) => line.gstApplicable && line.taxMinor > 0,
+    )
+        ? 'TAX INVOICE'
+        : 'INVOICE';
 
     return (
         <div className="min-h-screen bg-background/50">
@@ -108,7 +113,7 @@ export default function PublicInvoicePage() {
                                 {tenantSettings?.businessName || 'Invoice'}
                             </h1>
                             <p className="text-sm text-foreground/60">
-                                Invoice {invoice.invoiceDisplayNumber || invoice.invoiceNumber}
+                                {invoiceTitle} {invoice.invoiceDisplayNumber || invoice.invoiceNumber}
                             </p>
                         </div>
                     </div>
@@ -130,7 +135,7 @@ export default function PublicInvoicePage() {
                     {/* Invoice Header */}
                     <div className="flex justify-between mb-8">
                         <div>
-                            <h2 className="text-3xl font-bold mb-2">INVOICE</h2>
+                            <h2 className="text-3xl font-bold mb-2">{invoiceTitle}</h2>
                             <div className="space-y-1 text-sm">
                                 <p>
                                     <span className="font-semibold">Invoice #:</span>{' '}
@@ -211,16 +216,16 @@ export default function PublicInvoicePage() {
 
                     {/* Line Items */}
                     <div className="mb-8">
-                        <table className="w-full table-fixed">
+                        <table className="w-full table-auto">
                             <thead>
                                 <tr className="border-b border-foreground/20">
-                                    <th className="text-left py-3 font-semibold text-sm" style={{ width: '40%' }}>Description</th>
-                                    <th className="text-center py-3 font-semibold text-sm" style={{ width: '10%' }}>Price</th>
-                                    <th className="text-center py-3 font-semibold text-sm" style={{ width: '8%' }}>Qty</th>
-                                    <th className="text-center py-3 font-semibold text-sm" style={{ width: '10%' }}>Unit</th>
-                                    <th className="text-center py-3 font-semibold text-sm" style={{ width: '11%' }}>Subtotal</th>
-                                    <th className="text-center py-3 font-semibold text-sm" style={{ width: '10%' }}>{taxLabel}</th>
-                                    <th className="text-center py-3 font-semibold text-sm" style={{ width: '11%' }}>Total</th>
+                                    <th className="text-left py-3 font-semibold text-sm w-2/5">Description</th>
+                                    <th className="text-right py-3 font-semibold text-sm whitespace-nowrap">Price</th>
+                                    <th className="text-center py-3 font-semibold text-sm whitespace-nowrap">Qty</th>
+                                    <th className="text-center py-3 font-semibold text-sm whitespace-nowrap">Unit</th>
+                                    <th className="text-right py-3 font-semibold text-sm whitespace-nowrap">Subtotal</th>
+                                    <th className="text-right py-3 font-semibold text-sm whitespace-nowrap">{taxLabel}</th>
+                                    <th className="text-right py-3 font-semibold text-sm whitespace-nowrap">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -238,7 +243,7 @@ export default function PublicInvoicePage() {
                                                 </p>
                                             </div>
                                         </td>
-                                        <td className="text-center py-3">
+                                        <td className="text-right py-3 whitespace-nowrap tabular-nums">
                                             <span className="text-sm">{formatCurrency(line.unitPriceMinor)}</span>
                                         </td>
                                         <td className="text-center py-3">
@@ -247,15 +252,15 @@ export default function PublicInvoicePage() {
                                         <td className="text-center py-3">
                                             <span className="text-sm">{getBillableUnitLabel(line.unit, line.quantity)}</span>
                                         </td>
-                                        <td className="text-center py-3">
+                                        <td className="text-right py-3 whitespace-nowrap tabular-nums">
                                             <span className="text-sm">{formatCurrency(line.subtotalMinor)}</span>
                                         </td>
-                                        <td className="text-center py-3">
+                                        <td className="text-right py-3 whitespace-nowrap tabular-nums">
                                             <span className="text-sm">
                                                 {line.gstApplicable && line.taxMinor > 0 ? formatCurrency(line.taxMinor) : '—'}
                                             </span>
                                         </td>
-                                        <td className="text-center py-3">
+                                        <td className="text-right py-3 whitespace-nowrap tabular-nums">
                                             <span className="font-medium">{formatCurrency(line.totalMinor)}</span>
                                         </td>
                                     </tr>

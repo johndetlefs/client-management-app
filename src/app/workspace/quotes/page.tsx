@@ -165,7 +165,7 @@ export default function QuotesPage() {
                                     <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                                         Created
                                     </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap">
                                         Amount
                                     </th>
                                 </tr>
@@ -195,7 +195,7 @@ export default function QuotesPage() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-600 dark:text-zinc-400">
                                             {formatDate(quote.createdAt instanceof Date ? quote.createdAt : new Date())}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-foreground">
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-foreground tabular-nums">
                                             {formatCurrency(quote.totalMinor)}
                                         </td>
                                     </tr>

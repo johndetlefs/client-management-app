@@ -296,23 +296,23 @@ export default function InvoiceDetailPage() {
                     <p className="text-gray-500 text-center py-8">No items added yet</p>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full table-fixed">
+                        <table className="w-full table-auto">
                             <thead className="border-b">
                                 <tr className="text-left text-sm text-gray-600">
-                                    <th className="pb-3 px-2" style={{ width: '40%' }}>Description</th>
-                                    <th className="pb-3 px-2 text-center" style={{ width: '10%' }}>Price</th>
-                                    <th className="pb-3 px-2 text-center" style={{ width: '8%' }}>Qty</th>
-                                    <th className="pb-3 px-2 text-center" style={{ width: '10%' }}>Unit</th>
-                                    <th className="pb-3 px-2 text-center" style={{ width: '11%' }}>Subtotal</th>
+                                    <th className="pb-3 px-2 w-2/5">Description</th>
+                                    <th className="pb-3 px-2 text-right whitespace-nowrap">Price</th>
+                                    <th className="pb-3 px-2 text-center whitespace-nowrap">Qty</th>
+                                    <th className="pb-3 px-2 text-center whitespace-nowrap">Unit</th>
+                                    <th className="pb-3 px-2 text-right whitespace-nowrap">Subtotal</th>
                                     {invoice.lines.some((l) => l.gstApplicable) && (
-                                        <th className="pb-3 px-2 text-center" style={{ width: '10%' }}>
+                                        <th className="pb-3 px-2 text-right whitespace-nowrap">
                                             {settings?.tax?.taxType && settings.tax.taxType !== 'None'
                                                 ? settings.tax.taxType
                                                 : 'Tax'}
                                         </th>
                                     )}
-                                    <th className="pb-3 px-2 text-center" style={{ width: canEdit ? '8%' : '11%' }}>Total</th>
-                                    {canEdit && <th className="pb-3 px-2" style={{ width: '8%' }}></th>}
+                                    <th className="pb-3 px-2 text-right whitespace-nowrap">Total</th>
+                                    {canEdit && <th className="pb-3 px-2 w-10"></th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -323,14 +323,14 @@ export default function InvoiceDetailPage() {
                                             {line.description && <p className="text-sm text-gray-600">{line.description}</p>}
                                             <p className="text-xs text-gray-500">Job: {line.jobTitle}</p>
                                         </td>
-                                        <td className="py-4 px-2 text-center">{formatCurrency(line.unitPriceMinor)}</td>
+                                        <td className="py-4 px-2 text-right whitespace-nowrap tabular-nums">{formatCurrency(line.unitPriceMinor)}</td>
                                         <td className="py-4 px-2 text-center">{line.quantity}</td>
                                         <td className="py-4 px-2 text-center">
                                             {getBillableUnitLabel(line.unit, line.quantity)}
                                         </td>
-                                        <td className="py-4 px-2 text-center">{formatCurrency(line.subtotalMinor)}</td>
+                                        <td className="py-4 px-2 text-right whitespace-nowrap tabular-nums">{formatCurrency(line.subtotalMinor)}</td>
                                         {invoice.lines.some((l) => l.gstApplicable) && (
-                                            <td className="py-4 px-2 text-center">
+                                            <td className="py-4 px-2 text-right whitespace-nowrap tabular-nums">
                                                 {line.gstApplicable && line.taxMinor > 0 ? (
                                                     formatCurrency(line.taxMinor)
                                                 ) : (
@@ -338,7 +338,7 @@ export default function InvoiceDetailPage() {
                                                 )}
                                             </td>
                                         )}
-                                        <td className="py-4 px-2 text-center font-medium">{formatCurrency(line.totalMinor)}</td>
+                                        <td className="py-4 px-2 text-right whitespace-nowrap tabular-nums font-medium">{formatCurrency(line.totalMinor)}</td>
                                         {canEdit && (
                                             <td className="py-4 px-2 text-center">
                                                 <button

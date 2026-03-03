@@ -43,6 +43,11 @@ export interface TenantSettings {
   invoiceTerms?: string;
   invoiceFooter?: string;
 
+  // Quote settings
+  quotePrefix?: string;
+  quoteTerms?: string;
+  quoteFooter?: string;
+
   // Metadata
   updatedAt?: Date;
   updatedBy?: string;

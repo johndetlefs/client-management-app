@@ -231,7 +231,7 @@ export async function addItemsToInvoice(
       }
 
       // Load tenant settings to get tax rate
-      const settingsRef = adminDb.doc(`tenants/${tenantId}`);
+      const settingsRef = adminDb.doc(`tenants/${tenantId}/settings/business`);
       const settingsSnap = await transaction.get(settingsRef);
       const settings = settingsSnap.exists
         ? (settingsSnap.data() as TenantSettings)
@@ -381,7 +381,7 @@ export async function removeItemFromInvoice(
       }
 
       // Load tenant settings to get tax rate
-      const settingsRef = adminDb.doc(`tenants/${tenantId}`);
+      const settingsRef = adminDb.doc(`tenants/${tenantId}/settings/business`);
       const settingsSnap = await transaction.get(settingsRef);
       const settings = settingsSnap.exists
         ? (settingsSnap.data() as TenantSettings)
@@ -718,6 +718,13 @@ export async function voidInvoice(
         throw new Error("Cannot void a draft invoice. Delete it instead.");
       }
 
+      const itemRefs = invoice.lockedJobItemIds.map((jobItemId) =>
+        adminDb.collection(`tenants/${tenantId}/jobItems`).doc(jobItemId),
+      );
+      const itemSnaps = await Promise.all(
+        itemRefs.map((itemRef) => transaction.get(itemRef)),
+      );
+
       // Update invoice status to void
       transaction.update(invoiceRef, {
         status: "void",
@@ -728,11 +735,10 @@ export async function voidInvoice(
       console.log(
         `[voidInvoice] Unlocking ${invoice.lockedJobItemIds.length} items`,
       );
-      for (const jobItemId of invoice.lockedJobItemIds) {
-        const itemRef = adminDb
-          .collection(`tenants/${tenantId}/jobItems`)
-          .doc(jobItemId);
-        const itemSnap = await transaction.get(itemRef);
+      for (let index = 0; index < invoice.lockedJobItemIds.length; index += 1) {
+        const jobItemId = invoice.lockedJobItemIds[index];
+        const itemRef = itemRefs[index];
+        const itemSnap = itemSnaps[index];
 
         // Only update if item exists
         if (itemSnap.exists) {
@@ -782,12 +788,17 @@ export async function deleteDraftInvoice(
         throw new Error("Only draft invoices can be deleted");
       }
 
+      const itemRefs = invoice.lockedJobItemIds.map((jobItemId) =>
+        adminDb.collection(`tenants/${tenantId}/jobItems`).doc(jobItemId),
+      );
+      const itemSnaps = await Promise.all(
+        itemRefs.map((itemRef) => transaction.get(itemRef)),
+      );
+
       // Unlock all items
-      for (const jobItemId of invoice.lockedJobItemIds) {
-        const itemRef = adminDb
-          .collection(`tenants/${tenantId}/jobItems`)
-          .doc(jobItemId);
-        const itemSnap = await transaction.get(itemRef);
+      for (let index = 0; index < invoice.lockedJobItemIds.length; index += 1) {
+        const itemRef = itemRefs[index];
+        const itemSnap = itemSnaps[index];
 
         // Only update if item exists
         if (itemSnap.exists) {

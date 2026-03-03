@@ -407,9 +407,19 @@ export async function createQuoteFromJob(
         typeof client.shortcode === "string"
           ? client.shortcode.trim().toUpperCase()
           : "";
-      const quoteDisplayNumber = /^[A-Z]{4}$/.test(normalizedShortcode)
-        ? formatQuoteDisplayNumber(normalizedShortcode, nextQuoteNumber)
-        : `Q-${nextQuoteNumber.toString().padStart(3, "0")}`;
+      const configuredPrefix =
+        typeof settings?.quotePrefix === "string"
+          ? settings.quotePrefix.trim().toUpperCase()
+          : "";
+      const quotePrefix = configuredPrefix || "Q";
+      const quoteMiddle = /^[A-Z]{4}$/.test(normalizedShortcode)
+        ? normalizedShortcode
+        : year.toString();
+      const quoteDisplayNumber = formatQuoteDisplayNumber(
+        quotePrefix,
+        quoteMiddle,
+        nextQuoteNumber,
+      );
 
       const quotePayload: Record<string, unknown> = {
         tenantId,

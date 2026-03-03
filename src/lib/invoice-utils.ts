@@ -231,14 +231,17 @@ export function formatInvoiceDisplayNumber(
 }
 
 /**
- * Format quote display number with Q prefix + client shortcode + sequence
- * Example: Q-LEVO-001
+ * Format quote display number with prefix + shortcode/year + sequence
+ * Example: Q-LEVO-001, QUO-2026-001
  */
 export function formatQuoteDisplayNumber(
-  shortcode: string,
+  prefix: string,
+  middle: string,
   number: number,
 ): string {
-  return `Q-${shortcode.toUpperCase()}-${number.toString().padStart(3, "0")}`;
+  return `${prefix.toUpperCase()}-${middle.toUpperCase()}-${number
+    .toString()
+    .padStart(3, "0")}`;
 }
 
 /**
