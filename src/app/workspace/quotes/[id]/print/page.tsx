@@ -275,20 +275,20 @@ export default function QuotePrintPage() {
                     </div>
                 </div>
 
-                {quoteTerms && (
+                {quote.notes && (
                     <div className="mt-10">
-                        <h4 className="font-semibold mb-2">Terms</h4>
+                        <h4 className="font-semibold mb-2">Notes</h4>
                         <p className="text-sm text-foreground/80 whitespace-pre-wrap">
-                            {quoteTerms}
+                            {quote.notes}
                         </p>
                     </div>
                 )}
 
-                {quote.notes && (
+                {quoteTerms && (
                     <div className="mt-10 border-t pt-4">
-                        <h4 className="font-semibold mb-2">Notes</h4>
+                        <h4 className="font-semibold mb-2">Terms</h4>
                         <p className="text-sm text-foreground/80 whitespace-pre-wrap">
-                            {quote.notes}
+                            {quoteTerms}
                         </p>
                     </div>
                 )}
