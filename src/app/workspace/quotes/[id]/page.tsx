@@ -16,7 +16,12 @@ import {
 } from "@/lib/invoice-utils";
 import { getBillableUnitLabel } from "@/types/jobItem";
 import { Quote } from "@/types/quote";
-import { getQuoteForEdit, updateQuoteDetails, updateQuoteStatus } from "../actions";
+import {
+    getQuoteForEdit,
+    regenerateQuotePublicToken,
+    updateQuoteDetails,
+    updateQuoteStatus,
+} from "../actions";
 import { getTenantSettings } from "@/app/workspace/settings/actions";
 
 export default function QuoteDetailPage() {
@@ -29,6 +34,7 @@ export default function QuoteDetailPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [regeneratingToken, setRegeneratingToken] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [quoteDisplayNumber, setQuoteDisplayNumber] = useState("");
     const [notes, setNotes] = useState("");
@@ -167,6 +173,35 @@ export default function QuoteDetailPage() {
         }
     };
 
+    const handleRegeneratePublicLink = async () => {
+        if (!tenantId || !user || !quote) {
+            return;
+        }
+
+        if (!confirm("Regenerate public link? The old link will stop working immediately.")) {
+            return;
+        }
+
+        setRegeneratingToken(true);
+        setError(null);
+
+        try {
+            const result = await regenerateQuotePublicToken(tenantId, user.uid, quote.id);
+            if (!result.success) {
+                setError(result.error);
+                return;
+            }
+
+            setQuote(result.data);
+            alert("Public link regenerated successfully.");
+        } catch (tokenError) {
+            console.error("Error regenerating public quote link:", tokenError);
+            setError("Failed to regenerate public link");
+        } finally {
+            setRegeneratingToken(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="p-8">
@@ -213,6 +248,47 @@ export default function QuoteDetailPage() {
             {error && (
                 <Card className="mb-6 p-4 border-red-200 dark:border-red-800">
                     <p className="text-red-600 dark:text-red-400">{error}</p>
+                </Card>
+            )}
+
+            {quote.publicToken && (
+                <Card className="p-6 mb-6">
+                    <h3 className="font-semibold mb-2">Public Quote Link</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                        Share this link with your client to allow them to view the quote online.
+                    </p>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            readOnly
+                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/public/quote/${quote.publicToken}`}
+                            className="flex-1 px-3 py-2 border rounded-md bg-gray-50 text-sm font-mono"
+                            onClick={(event) => event.currentTarget.select()}
+                        />
+                        <Button
+                            variant="secondary"
+                            onClick={() => {
+                                const url = `${window.location.origin}/public/quote/${quote.publicToken}`;
+                                navigator.clipboard.writeText(url);
+                                alert("Link copied to clipboard!");
+                            }}
+                        >
+                            Copy Link
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleRegeneratePublicLink}
+                            disabled={regeneratingToken}
+                        >
+                            {regeneratingToken ? "Regenerating..." : "Regenerate Link"}
+                        </Button>
+                    </div>
+                    {quote.viewedAt && quote.viewedAt instanceof Date && (
+                        <p className="text-xs text-foreground/60 mt-2">
+                            First viewed: {formatDate(quote.viewedAt)}
+                        </p>
+                    )}
                 </Card>
             )}
 

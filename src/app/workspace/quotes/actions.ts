@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import {
   formatInvoiceNumber,
   formatQuoteDisplayNumber,
+  generatePublicToken,
 } from "@/lib/invoice-utils";
 import { FieldValue } from "firebase-admin/firestore";
 import { JobItem } from "@/types/jobItem";
@@ -130,6 +131,9 @@ function mapQuoteDocument(
     notes: typeof docData.notes === "string" ? docData.notes : undefined,
     totalMinor: typeof docData.totalMinor === "number" ? docData.totalMinor : 0,
     acceptedAt,
+    viewedAt: timestampToDate(docData.viewedAt),
+    publicToken:
+      typeof docData.publicToken === "string" ? docData.publicToken : undefined,
     createdAt: timestampToDate(docData.createdAt) || new Date(),
     updatedAt: timestampToDate(docData.updatedAt) || new Date(),
   };
@@ -427,6 +431,7 @@ export async function createQuoteFromJob(
         jobId: job.id,
         quoteNumber,
         quoteDisplayNumber,
+        publicToken: generatePublicToken(),
         status: "draft",
         lines: quoteLines,
         selectedJobItemIds: uniqueItemIds,
@@ -631,6 +636,45 @@ export async function updateQuoteStatus(
         error instanceof Error
           ? error.message
           : "Failed to update quote status",
+    };
+  }
+}
+
+export async function regenerateQuotePublicToken(
+  tenantId: string,
+  userId: string,
+  quoteId: string,
+): Promise<ActionResult<Quote>> {
+  try {
+    const permission = await ensureUserCanManageQuotes(tenantId, userId);
+    if (!permission.success) {
+      return permission;
+    }
+
+    const quoteRef = adminDb.doc(`tenants/${tenantId}/quotes/${quoteId}`);
+    await adminDb.runTransaction(async (transaction) => {
+      const quoteSnap = await transaction.get(quoteRef);
+
+      if (!quoteSnap.exists) {
+        throw new Error("Quote not found");
+      }
+
+      transaction.update(quoteRef, {
+        publicToken: generatePublicToken(),
+        viewedAt: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    });
+
+    return getQuoteForEdit(tenantId, userId, quoteId);
+  } catch (error) {
+    console.error("Error regenerating quote public token:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to regenerate quote public token",
     };
   }
 }

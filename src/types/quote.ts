@@ -35,6 +35,8 @@ export interface Quote {
   notes?: string;
   totalMinor: number;
   acceptedAt?: Timestamp | Date;
+  viewedAt?: Timestamp | Date;
+  publicToken?: string;
   createdAt: Timestamp | Date;
   updatedAt: Timestamp | Date;
 }
