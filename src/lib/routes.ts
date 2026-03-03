@@ -21,6 +21,7 @@ export const WORKSPACE_ROUTES = {
   CLIENTS: "/workspace/clients",
   JOBS: "/workspace/jobs", // Future
   INVOICES: "/workspace/invoices", // Future
+  QUOTES: "/workspace/quotes",
   SETTINGS: "/workspace/settings",
 } as const;
 
@@ -56,6 +57,16 @@ export const INVOICE_ROUTES = {
 } as const;
 
 /**
+ * Quote-specific routes
+ */
+export const QUOTE_ROUTES = {
+  LIST: WORKSPACE_ROUTES.QUOTES,
+  VIEW: (id: string) => `/workspace/quotes/${id}`,
+  PRINT: (id: string) => `/workspace/quotes/${id}/print`,
+  PUBLIC: (token: string) => `/public/quote/${token}`,
+} as const;
+
+/**
  * All routes combined
  */
 export const ROUTES = {
@@ -64,6 +75,7 @@ export const ROUTES = {
   CLIENTS: CLIENT_ROUTES,
   JOBS: JOB_ROUTES,
   INVOICES: INVOICE_ROUTES,
+  QUOTES: QUOTE_ROUTES,
 } as const;
 
 /**
@@ -96,6 +108,11 @@ export const WORKSPACE_NAV_ITEMS: NavItem[] = [
     label: "Invoices",
     href: WORKSPACE_ROUTES.INVOICES,
     icon: "📄",
+  },
+  {
+    label: "Quotes",
+    href: WORKSPACE_ROUTES.QUOTES,
+    icon: "🧾",
   },
 ];
 

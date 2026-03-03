@@ -27,6 +27,7 @@ export interface JobItem {
   tenantId: string;
   jobId: string;
   clientId: string; // Denormalized for easier querying
+  sortOrder?: number;
 
   // Core information
   title: string;
@@ -64,11 +65,43 @@ export type JobItemUpdateData = Partial<
   Omit<JobItem, "id" | "tenantId" | "createdAt" | "createdBy" | "lock">
 >;
 
+function toTimestampMillis(value: Timestamp | Date | undefined): number {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+  return value.toMillis();
+}
+
+/**
+ * Sort job items by explicit sortOrder, with createdAt fallback for legacy items
+ */
+export function sortJobItems(items: JobItem[]): JobItem[] {
+  return [...items].sort((a, b) => {
+    const aHasOrder = typeof a.sortOrder === "number";
+    const bHasOrder = typeof b.sortOrder === "number";
+
+    if (aHasOrder && bHasOrder && a.sortOrder !== b.sortOrder) {
+      return (a.sortOrder as number) - (b.sortOrder as number);
+    }
+
+    if (aHasOrder !== bHasOrder) {
+      return aHasOrder ? -1 : 1;
+    }
+
+    const createdDiff =
+      toTimestampMillis(a.createdAt) - toTimestampMillis(b.createdAt);
+    if (createdDiff !== 0) {
+      return createdDiff;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
+}
+
 /**
  * Helper function to compute line subtotal in minor units
  */
 export function computeLineSubtotal(
-  item: Pick<JobItem, "quantity" | "unitPriceMinor">
+  item: Pick<JobItem, "quantity" | "unitPriceMinor">,
 ): number {
   return Math.round(item.quantity * item.unitPriceMinor);
 }
@@ -78,7 +111,7 @@ export function computeLineSubtotal(
  */
 export function computeTaxAmount(
   item: Pick<JobItem, "quantity" | "unitPriceMinor" | "gstApplicable">,
-  taxRate: number
+  taxRate: number,
 ): number {
   // Default to true for legacy items that don't have gstApplicable field
   const shouldApplyGst = item.gstApplicable ?? true;
@@ -92,7 +125,7 @@ export function computeTaxAmount(
  */
 export function computeLineTotal(
   item: Pick<JobItem, "quantity" | "unitPriceMinor" | "gstApplicable">,
-  taxRate: number
+  taxRate: number,
 ): number {
   const subtotal = computeLineSubtotal(item);
   const tax = computeTaxAmount(item, taxRate);
@@ -104,7 +137,7 @@ export function computeLineTotal(
  */
 export function formatMinorUnits(
   minorUnits: number,
-  currency: string = "AUD"
+  currency: string = "AUD",
 ): string {
   const major = minorUnits / 100;
   return new Intl.NumberFormat("en-AU", {
@@ -118,7 +151,7 @@ export function formatMinorUnits(
  */
 export function getBillableUnitLabel(
   unit: BillableUnit,
-  quantity: number = 1
+  quantity: number = 1,
 ): string {
   // Expense is not a unit - return N/A
   if (unit === "expense") {

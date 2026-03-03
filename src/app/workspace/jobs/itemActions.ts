@@ -7,6 +7,7 @@ import type {
   JobItemFormData,
   JobItemUpdateData,
 } from "@/types/jobItem";
+import { sortJobItems } from "@/types/jobItem";
 
 /**
  * Server action result type
@@ -21,7 +22,7 @@ type ActionResult<T = void> =
 function docToJobItem(
   doc:
     | FirebaseFirestore.QueryDocumentSnapshot
-    | FirebaseFirestore.DocumentSnapshot
+    | FirebaseFirestore.DocumentSnapshot,
 ): JobItem {
   const data = doc.data();
   if (!data) throw new Error("Document has no data");
@@ -45,23 +46,22 @@ function docToJobItem(
  */
 export async function getJobItems(
   tenantId: string,
-  jobId: string
+  jobId: string,
 ): Promise<ActionResult<JobItem[]>> {
   try {
     console.log(
       "[getJobItems] Starting - tenantId:",
       tenantId,
       "jobId:",
-      jobId
+      jobId,
     );
     const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
-    const snapshot = await jobItemsRef
-      .where("jobId", "==", jobId)
-      .orderBy("createdAt", "desc")
-      .get();
+    const snapshot = await jobItemsRef.where("jobId", "==", jobId).get();
     console.log("[getJobItems] Docs fetched, count:", snapshot.docs.length);
 
-    const jobItems: JobItem[] = snapshot.docs.map((doc) => docToJobItem(doc));
+    const jobItems: JobItem[] = sortJobItems(
+      snapshot.docs.map((doc) => docToJobItem(doc)),
+    );
 
     console.log("[getJobItems] Success - returning", jobItems.length, "items");
     return { success: true, data: jobItems };
@@ -90,17 +90,18 @@ export async function getJobItems(
  */
 export async function getOpenJobItemsByClient(
   tenantId: string,
-  clientId: string
+  clientId: string,
 ): Promise<ActionResult<JobItem[]>> {
   try {
     const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
     const snapshot = await jobItemsRef
       .where("clientId", "==", clientId)
       .where("status", "==", "open")
-      .orderBy("createdAt", "desc")
       .get();
 
-    const jobItems: JobItem[] = snapshot.docs.map((doc) => docToJobItem(doc));
+    const jobItems: JobItem[] = sortJobItems(
+      snapshot.docs.map((doc) => docToJobItem(doc)),
+    );
 
     return { success: true, data: jobItems };
   } catch (error) {
@@ -130,7 +131,7 @@ export async function getOpenJobItemsByClient(
  */
 export async function getJobItem(
   tenantId: string,
-  jobItemId: string
+  jobItemId: string,
 ): Promise<ActionResult<JobItem>> {
   try {
     const jobItemRef = adminDb.doc(`tenants/${tenantId}/jobItems/${jobItemId}`);
@@ -155,14 +156,14 @@ export async function getJobItem(
 export async function createJobItem(
   tenantId: string,
   userId: string,
-  data: JobItemFormData
+  data: JobItemFormData,
 ): Promise<ActionResult<string>> {
   try {
     console.log(
       "[createJobItem] Starting - tenantId:",
       tenantId,
       "userId:",
-      userId
+      userId,
     );
     console.log("[createJobItem] Data:", JSON.stringify(data, null, 2));
 
@@ -185,6 +186,24 @@ export async function createJobItem(
     }
 
     const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
+    const existingForJobSnap = await jobItemsRef
+      .where("jobId", "==", data.jobId)
+      .get();
+
+    let nextSortOrder = 1;
+    if (!existingForJobSnap.empty) {
+      const existingItems = existingForJobSnap.docs
+        .map((doc) => docToJobItem(doc))
+        .filter((item) => typeof item.sortOrder === "number");
+
+      if (existingItems.length > 0) {
+        nextSortOrder =
+          Math.max(...existingItems.map((item) => item.sortOrder as number)) +
+          1;
+      } else {
+        nextSortOrder = existingForJobSnap.size + 1;
+      }
+    }
 
     // Remove undefined values to avoid Firestore errors
     const cleanData: Record<string, unknown> = {
@@ -196,6 +215,7 @@ export async function createJobItem(
       unitPriceMinor: data.unitPriceMinor,
       gstApplicable: data.gstApplicable ?? true,
       status: data.status,
+      sortOrder: nextSortOrder,
       tenantId,
       createdBy: userId,
       createdAt: FieldValue.serverTimestamp(),
@@ -224,7 +244,7 @@ export async function createJobItem(
 export async function updateJobItem(
   tenantId: string,
   jobItemId: string,
-  data: JobItemUpdateData
+  data: JobItemUpdateData,
 ): Promise<ActionResult> {
   try {
     const jobItemRef = adminDb.doc(`tenants/${tenantId}/jobItems/${jobItemId}`);
@@ -289,7 +309,7 @@ export async function updateJobItem(
  */
 export async function deleteJobItem(
   tenantId: string,
-  jobItemId: string
+  jobItemId: string,
 ): Promise<ActionResult> {
   try {
     const jobItemRef = adminDb.doc(`tenants/${tenantId}/jobItems/${jobItemId}`);
@@ -316,5 +336,64 @@ export async function deleteJobItem(
   } catch (error) {
     console.error("Error deleting job item:", error);
     return { success: false, error: "Failed to delete job item" };
+  }
+}
+
+export async function moveJobItemOrder(
+  tenantId: string,
+  jobId: string,
+  jobItemId: string,
+  direction: "up" | "down",
+): Promise<ActionResult> {
+  try {
+    const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
+    const snapshot = await jobItemsRef.where("jobId", "==", jobId).get();
+
+    if (snapshot.empty) {
+      return { success: false, error: "No job items found" };
+    }
+
+    const orderedItems = sortJobItems(
+      snapshot.docs.map((doc) => docToJobItem(doc)),
+    );
+    const currentIndex = orderedItems.findIndex(
+      (item) => item.id === jobItemId,
+    );
+
+    if (currentIndex === -1) {
+      return { success: false, error: "Job item not found" };
+    }
+
+    const targetIndex =
+      direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= orderedItems.length) {
+      return { success: true, data: undefined };
+    }
+
+    const reorderedItems = [...orderedItems];
+    const [movedItem] = reorderedItems.splice(currentIndex, 1);
+    reorderedItems.splice(targetIndex, 0, movedItem);
+
+    const batch = adminDb.batch();
+    reorderedItems.forEach((item, index) => {
+      const nextSortOrder = index + 1;
+      if (item.sortOrder !== nextSortOrder) {
+        const itemRef = adminDb.doc(`tenants/${tenantId}/jobItems/${item.id}`);
+        batch.update(itemRef, {
+          sortOrder: nextSortOrder,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+    });
+
+    await batch.commit();
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error("Error moving job item order:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to move job item",
+    };
   }
 }

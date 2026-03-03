@@ -3,26 +3,36 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
 import { JobItemsList } from '@/components/jobs/JobItemsList';
 import { getCurrentUserTenantId } from '@/lib/tenant';
+import { formatCurrency } from '@/lib/invoice-utils';
 import { getJob, deleteJob, archiveJob } from '../actions';
 import { getClient } from '../../clients/actions';
+import {
+    createQuoteFromJob,
+    getOpenJobItemsForQuote,
+} from '../../quotes/actions';
 import { JOB_ROUTES, CLIENT_ROUTES } from '@/lib/routes';
 import type { Job, JobStatus } from '@/types/job';
 import type { Client } from '@/types/client';
+import type { JobItem } from '@/types/jobItem';
 
 export default function JobViewPage() {
+    const { user } = useAuth();
     const params = useParams();
     const router = useRouter();
     const jobId = params.id as string;
 
     const [job, setJob] = useState<Job | null>(null);
     const [client, setClient] = useState<Client | null>(null);
+    const [tenantId, setTenantId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showQuoteModal, setShowQuoteModal] = useState(false);
 
     useEffect(() => {
         const loadJob = async () => {
@@ -35,6 +45,7 @@ export default function JobViewPage() {
                 setLoading(false);
                 return;
             }
+            setTenantId(tenantId);
 
             const result = await getJob(tenantId, jobId);
             if (result.success) {
@@ -186,6 +197,11 @@ export default function JobViewPage() {
                                     <Button>Edit Job</Button>
                                 </Link>
                                 {job.status !== 'archived' && (
+                                    <Button variant="secondary" onClick={() => setShowQuoteModal(true)}>
+                                        Create Quote
+                                    </Button>
+                                )}
+                                {job.status !== 'archived' && (
                                     <Button variant="secondary" onClick={handleArchive}>
                                         Archive
                                     </Button>
@@ -300,8 +316,214 @@ export default function JobViewPage() {
                             Back to Jobs
                         </Button>
                     </div>
+
+                    {showQuoteModal && tenantId && user && (
+                        <CreateQuoteModal
+                            tenantId={tenantId}
+                            userId={user.uid}
+                            jobId={job.id}
+                            onClose={() => setShowQuoteModal(false)}
+                            onCreated={(quoteId, quoteNumber) => {
+                                setShowQuoteModal(false);
+                                alert(`Quote ${quoteNumber} created successfully.`);
+                                router.push(`/workspace/quotes?created=${quoteId}`);
+                            }}
+                        />
+                    )}
                 </main>
             </div>
         </ProtectedRoute>
+    );
+}
+
+interface CreateQuoteModalProps {
+    tenantId: string;
+    userId: string;
+    jobId: string;
+    onClose: () => void;
+    onCreated: (quoteId: string, quoteNumber: string) => void;
+}
+
+function CreateQuoteModal({
+    tenantId,
+    userId,
+    jobId,
+    onClose,
+    onCreated,
+}: CreateQuoteModalProps) {
+    const [items, setItems] = useState<JobItem[]>([]);
+    const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadItems = async () => {
+            setLoading(true);
+            setError(null);
+
+            const result = await getOpenJobItemsForQuote(tenantId, userId, jobId);
+            if (!result.success) {
+                setError(result.error);
+                setLoading(false);
+                return;
+            }
+
+            setItems(result.data);
+            setSelectedItemIds(result.data.map((item) => item.id));
+            setLoading(false);
+        };
+
+        loadItems();
+    }, [tenantId, userId, jobId]);
+
+    const toggleItem = (itemId: string) => {
+        setSelectedItemIds((previous) =>
+            previous.includes(itemId)
+                ? previous.filter((id) => id !== itemId)
+                : [...previous, itemId]
+        );
+    };
+
+    const selectedTotalMinor = items
+        .filter((item) => selectedItemIds.includes(item.id))
+        .reduce(
+            (total, item) =>
+                total + Math.round(item.quantity * item.unitPriceMinor),
+            0
+        );
+
+    const handleCreate = async () => {
+        if (selectedItemIds.length === 0) {
+            setError('Select at least one job item.');
+            return;
+        }
+
+        setSaving(true);
+        setError(null);
+
+        const orderedSelectedItemIds = items
+            .filter((item) => selectedItemIds.includes(item.id))
+            .map((item) => item.id);
+
+        const result = await createQuoteFromJob(tenantId, userId, {
+            jobId,
+            jobItemIds: orderedSelectedItemIds,
+        });
+
+        if (!result.success) {
+            setError(result.error);
+            setSaving(false);
+            return;
+        }
+
+        onCreated(result.data.quoteId, result.data.quoteNumber || 'Draft');
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-3xl p-6 max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="flex items-start justify-between mb-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-foreground">Create Quote</h2>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                            Select existing open job items to snapshot into a quote.
+                        </p>
+                    </div>
+                    <Button variant="secondary" onClick={onClose} disabled={saving}>
+                        Close
+                    </Button>
+                </div>
+
+                {loading ? (
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading job items...</p>
+                ) : items.length === 0 ? (
+                    <div className="text-center py-10">
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                            No open job items available for quoting.
+                        </p>
+                        <Button variant="secondary" onClick={onClose}>
+                            Close
+                        </Button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="overflow-y-auto border border-zinc-200 dark:border-zinc-800 rounded-lg">
+                            <table className="w-full">
+                                <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+                                            Select
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+                                            Item
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+                                            Qty
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+                                            Unit Price
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+                                            Subtotal
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                                    {items.map((item) => {
+                                        const subtotalMinor = Math.round(item.quantity * item.unitPriceMinor);
+                                        const checked = selectedItemIds.includes(item.id);
+
+                                        return (
+                                            <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                                                <td className="px-4 py-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={() => toggleItem(item.id)}
+                                                        className="w-4 h-4"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <p className="font-medium text-foreground">{item.title}</p>
+                                                    {item.description && (
+                                                        <p className="text-sm text-zinc-600 dark:text-zinc-400">{item.description}</p>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-sm text-foreground">{item.quantity}</td>
+                                                <td className="px-4 py-3 text-right text-sm text-foreground">{formatCurrency(item.unitPriceMinor)}</td>
+                                                <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatCurrency(subtotalMinor)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {error && (
+                            <p className="text-sm text-red-600 dark:text-red-400 mt-3">{error}</p>
+                        )}
+
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                {selectedItemIds.length} item{selectedItemIds.length === 1 ? '' : 's'} selected
+                            </p>
+                            <p className="text-sm font-medium text-foreground">
+                                Subtotal: {formatCurrency(selectedTotalMinor)}
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button variant="secondary" onClick={onClose} disabled={saving}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleCreate} disabled={saving || selectedItemIds.length === 0}>
+                                {saving ? 'Creating...' : 'Create Quote'}
+                            </Button>
+                        </div>
+                    </>
+                )}
+            </Card>
+        </div>
     );
 }

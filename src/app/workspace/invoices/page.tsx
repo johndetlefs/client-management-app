@@ -178,13 +178,13 @@ export default function InvoicesPage() {
                                     <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                                         Due Date
                                     </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap">
                                         Amount
                                     </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap">
                                         Paid
                                     </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap">
                                         Balance
                                     </th>
                                 </tr>
@@ -236,19 +236,19 @@ export default function InvoicesPage() {
                                                         : "—"}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <td className="px-6 py-4 whitespace-nowrap text-right tabular-nums">
                                                 <div className="text-sm font-medium text-foreground">
                                                     {formatCurrency(invoice.totalMinor)}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <td className="px-6 py-4 whitespace-nowrap text-right tabular-nums">
                                                 <div className="text-sm text-zinc-600 dark:text-zinc-400">
                                                     {invoice.amountPaidMinor > 0
                                                         ? formatCurrency(invoice.amountPaidMinor)
                                                         : "—"}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <td className="px-6 py-4 whitespace-nowrap text-right tabular-nums">
                                                 <div className={`text-sm font-medium ${invoice.balanceDueMinor > 0 && invoice.status !== "draft"
                                                     ? "text-red-600 dark:text-red-400"
                                                     : "text-zinc-600 dark:text-zinc-400"

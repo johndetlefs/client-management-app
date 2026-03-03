@@ -37,6 +37,9 @@ export default function SettingsPage() {
         invoicePrefix: '',
         invoiceTerms: '',
         invoiceFooter: '',
+        quotePrefix: '',
+        quoteTerms: '',
+        quoteFooter: '',
     });
 
     useEffect(() => {
@@ -367,6 +370,55 @@ export default function SettingsPage() {
                                     setSettings({ ...settings, invoiceFooter: e.target.value })
                                 }
                                 placeholder="Thank you for your business!"
+                                rows={2}
+                                className="w-full px-4 py-2 rounded-lg border border-foreground/20 bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20 transition-all"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Quote Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Input
+                            label="Quote Prefix"
+                            value={settings.quotePrefix || ''}
+                            onChange={(e) =>
+                                setSettings({ ...settings, quotePrefix: e.target.value })
+                            }
+                            placeholder="QUO"
+                        />
+                        <p className="text-xs text-foreground/60 -mt-2">
+                            Optional prefix for quote numbers (e.g., QUO-2025-001)
+                        </p>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-2">
+                                Quote Terms
+                            </label>
+                            <textarea
+                                value={settings.quoteTerms || ''}
+                                onChange={(e) =>
+                                    setSettings({ ...settings, quoteTerms: e.target.value })
+                                }
+                                placeholder="This quote is valid for 30 days from quote date"
+                                rows={3}
+                                className="w-full px-4 py-2 rounded-lg border border-foreground/20 bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20 transition-all"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-2">
+                                Quote Footer
+                            </label>
+                            <textarea
+                                value={settings.quoteFooter || ''}
+                                onChange={(e) =>
+                                    setSettings({ ...settings, quoteFooter: e.target.value })
+                                }
+                                placeholder="Thank you for considering our proposal."
                                 rows={2}
                                 className="w-full px-4 py-2 rounded-lg border border-foreground/20 bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20 transition-all"
                             />

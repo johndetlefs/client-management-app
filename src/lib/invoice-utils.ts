@@ -4,6 +4,7 @@ import {
   TaxBreakdown,
   InvoiceStatus,
 } from "@/types/invoice";
+import { QuoteStatus } from "@/types/quote";
 import { JobItem } from "@/types/jobItem";
 
 /**
@@ -23,7 +24,7 @@ export function generatePublicToken(): string {
 export function createInvoiceLineFromJobItem(
   item: JobItem,
   jobTitle: string,
-  taxRate: number
+  taxRate: number,
 ): InvoiceLine {
   const subtotalMinor = Math.round(item.quantity * item.unitPriceMinor);
   // Default to true for legacy items that don't have gstApplicable field
@@ -58,7 +59,7 @@ export function createInvoiceLineFromJobItem(
  */
 export function computeInvoiceTotals(
   lines: InvoiceLine[],
-  taxRate: number
+  taxRate: number,
 ): {
   subtotalMinor: number;
   taxMinor: number;
@@ -102,7 +103,7 @@ export function computeInvoiceTotals(
  */
 export function computeBalanceDue(
   totalMinor: number,
-  amountPaidMinor: number
+  amountPaidMinor: number,
 ): number {
   return Math.max(0, totalMinor - amountPaidMinor);
 }
@@ -114,7 +115,7 @@ export function determineInvoiceStatus(
   currentStatus: InvoiceStatus,
   totalMinor: number,
   amountPaidMinor: number,
-  dueDate?: Date
+  dueDate?: Date,
 ): InvoiceStatus {
   // Don't change status if void or draft
   if (currentStatus === "void" || currentStatus === "draft") {
@@ -224,9 +225,23 @@ export function generateInvoiceCode(): string {
  */
 export function formatInvoiceDisplayNumber(
   shortcode: string,
-  code: string
+  code: string,
 ): string {
   return `${shortcode.toUpperCase()}-${code}`;
+}
+
+/**
+ * Format quote display number with prefix + shortcode/year + sequence
+ * Example: Q-LEVO-001, QUO-2026-001
+ */
+export function formatQuoteDisplayNumber(
+  prefix: string,
+  middle: string,
+  number: number,
+): string {
+  return `${prefix.toUpperCase()}-${middle.toUpperCase()}-${number
+    .toString()
+    .padStart(3, "0")}`;
 }
 
 /**
@@ -234,7 +249,7 @@ export function formatInvoiceDisplayNumber(
  */
 export function formatCurrency(
   minorUnits: number,
-  currency: string = "AUD"
+  currency: string = "AUD",
 ): string {
   const major = minorUnits / 100;
   return new Intl.NumberFormat("en-AU", {
@@ -299,4 +314,32 @@ export function getStatusLabel(status: InvoiceStatus | string): string {
     void: "Void",
   };
   return labels[status as InvoiceStatus] || "Sent";
+}
+
+/**
+ * Get quote status badge color
+ */
+export function getQuoteStatusColor(status: QuoteStatus | string): string {
+  const colors: Record<QuoteStatus, string> = {
+    draft: "bg-gray-100 text-gray-800",
+    sent: "bg-blue-100 text-blue-800",
+    accepted: "bg-green-100 text-green-800",
+    cancelled: "bg-gray-100 text-gray-500 line-through",
+  };
+
+  return colors[status as QuoteStatus] || colors.draft;
+}
+
+/**
+ * Get quote status display label
+ */
+export function getQuoteStatusLabel(status: QuoteStatus | string): string {
+  const labels: Record<QuoteStatus, string> = {
+    draft: "Draft",
+    sent: "Sent",
+    accepted: "Accepted",
+    cancelled: "Cancelled",
+  };
+
+  return labels[status as QuoteStatus] || "Draft";
 }
