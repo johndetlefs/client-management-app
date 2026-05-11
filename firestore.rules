@@ -26,8 +26,8 @@ service cloud.firestore {
     // User profile documents (top-level)
     match /users/{userId} {
       allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && request.auth.uid == userId;
+      // User profile creation and tenant assignment are handled by server/Admin SDK.
+      allow write: if false;
     }
     
     // Tenant-scoped data
@@ -38,6 +38,12 @@ service cloud.firestore {
       
       // Users within tenant
       match /users/{userId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isOwner(tenantId);
+      }
+
+      // Tenant settings
+      match /settings/{settingsId} {
         allow read: if belongsToTenant(tenantId);
         allow write: if isOwner(tenantId);
       }
@@ -79,12 +85,7 @@ service cloud.firestore {
         allow write: if false;
       }
     }
-    
-    // Public invoice access (by token)
-    match /tenants/{tenantId}/invoices/{invoiceId} {
-      allow read: if resource.data.publicToken == request.query.token;
-    }
-    
+
     // Deny all other access by default
     match /{document=**} {
       allow read, write: if false;
