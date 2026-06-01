@@ -38,6 +38,18 @@ function docToJob(
   } as Job;
 }
 
+function getJobCreatedAtMillis(job: Job): number {
+  return job.createdAt instanceof Date
+    ? job.createdAt.getTime()
+    : job.createdAt.toDate().getTime();
+}
+
+function sortJobsByCreatedAtDesc(jobs: Job[]): Job[] {
+  return [...jobs].sort(
+    (a, b) => getJobCreatedAtMillis(b) - getJobCreatedAtMillis(a)
+  );
+}
+
 /**
  * Get all jobs for a tenant
  */
@@ -80,12 +92,11 @@ export async function getJobsByClient(
 ): Promise<ActionResult<Job[]>> {
   try {
     const jobsRef = adminDb.collection(`tenants/${tenantId}/jobs`);
-    const snapshot = await jobsRef
-      .where("clientId", "==", clientId)
-      .orderBy("createdAt", "desc")
-      .get();
+    const snapshot = await jobsRef.where("clientId", "==", clientId).get();
 
-    const jobs: Job[] = snapshot.docs.map((doc) => docToJob(doc));
+    const jobs = sortJobsByCreatedAtDesc(
+      snapshot.docs.map((doc) => docToJob(doc))
+    );
 
     return { success: true, data: jobs };
   } catch (error) {

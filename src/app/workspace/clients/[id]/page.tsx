@@ -21,6 +21,7 @@ export default function ClientViewPage() {
 
     const [client, setClient] = useState<Client | null>(null);
     const [jobs, setJobs] = useState<Job[]>([]);
+    const [jobsError, setJobsError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,7 @@ export default function ClientViewPage() {
         const loadClient = async () => {
             setLoading(true);
             setError(null);
+            setJobsError(null);
 
             const tenantId = await getCurrentUserTenantId();
             if (!tenantId) {
@@ -44,6 +46,8 @@ export default function ClientViewPage() {
                 const jobsResult = await getJobsByClient(tenantId, clientId);
                 if (jobsResult.success) {
                     setJobs(jobsResult.data);
+                } else {
+                    setJobsError(jobsResult.error);
                 }
             } else {
                 setError(result.error);
@@ -316,7 +320,11 @@ export default function ClientViewPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {jobs.length === 0 ? (
+                            {jobsError ? (
+                                <p className="text-sm text-red-600 dark:text-red-400">
+                                    {jobsError}
+                                </p>
+                            ) : jobs.length === 0 ? (
                                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                                     No jobs for this client yet.
                                 </p>
