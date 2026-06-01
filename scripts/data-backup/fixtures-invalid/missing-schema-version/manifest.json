@@ -1,0 +1,22 @@
+{
+  "backupFormatVersion": 1,
+  "createdAt": "2026-05-29T00:00:00.000Z",
+  "source": {
+    "target": "fixture",
+    "projectId": "fixture-project"
+  },
+  "documentCount": 3,
+  "tenantIds": [
+    "fixture-tenant"
+  ],
+  "collectionCounts": {
+    "tenants": 1,
+    "tenants/fixture-tenant/customers": 1,
+    "users": 1
+  },
+  "checksum": {
+    "algorithm": "sha256",
+    "documents": "b5b1262aa08cc57826a2351dd79f991024d68326bfcb578449cc8a2cf76ecfdd"
+  },
+  "migrationsApplied": []
+}

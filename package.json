@@ -11,6 +11,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "backup:firestore:export": "node scripts/data-backup/firestore-backup.mjs export",
+    "backup:firestore:list": "node scripts/data-backup/firestore-backup.mjs list",
+    "backup:firestore:inspect": "node scripts/data-backup/firestore-backup.mjs inspect",
+    "backup:firestore:dry-run": "node scripts/data-backup/firestore-backup.mjs dry-run",
+    "backup:firestore:import": "node scripts/data-backup/firestore-backup.mjs import",
+    "backup:firestore:validate-fixtures": "node scripts/data-backup/firestore-backup.mjs validate-fixtures",
     "deploy:indexes": "firebase deploy --only firestore:indexes",
     "deploy:rules": "firebase deploy --only firestore:rules,storage"
   },

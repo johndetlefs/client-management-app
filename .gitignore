@@ -39,6 +39,7 @@ yarn-error.log*
 
 # Firebase emulator data and debug logs
 emulator-data/
+backups/
 *-debug.log
 ui-debug.log
 firebase-debug.log

@@ -1,0 +1,49 @@
+[
+  {
+    "path": "tenants/fixture-tenant",
+    "data": {
+      "name": "Fixture Tenant",
+      "createdAt": {
+        "__firestoreBackupType": "timestamp",
+        "seconds": 1767225600,
+        "nanoseconds": 0,
+        "iso": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  },
+  {
+    "path": "tenants/fixture-tenant/customers/fixture-client",
+    "data": {
+      "tenantId": "fixture-tenant",
+      "name": "Synthetic Client",
+      "email": "client@example.test",
+      "isActive": true,
+      "createdAt": {
+        "__firestoreBackupType": "timestamp",
+        "seconds": 1767225600,
+        "nanoseconds": 0,
+        "iso": "2026-01-01T00:00:00.000Z"
+      },
+      "updatedAt": {
+        "__firestoreBackupType": "timestamp",
+        "seconds": 1767225600,
+        "nanoseconds": 0,
+        "iso": "2026-01-01T00:00:00.000Z"
+      },
+      "createdBy": "fixture-user"
+    }
+  },
+  {
+    "path": "users/fixture-user",
+    "data": {
+      "tenantId": "fixture-tenant",
+      "email": "owner@example.test",
+      "createdAt": {
+        "__firestoreBackupType": "timestamp",
+        "seconds": 1767225600,
+        "nanoseconds": 0,
+        "iso": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  }
+]
