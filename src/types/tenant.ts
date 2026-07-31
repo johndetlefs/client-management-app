@@ -3,12 +3,34 @@
  */
 export type TaxType = "GST" | "VAT" | "Sales Tax" | "None";
 
+export type GstRegistrationStatus =
+  | "unknown"
+  | "not_registered"
+  | "registered";
+
+export interface GstRegistrationSettings {
+  status: GstRegistrationStatus;
+  effectiveFrom?: string;
+  effectiveTo?: string;
+}
+
+export type BasAccountingBasis = "cash" | "non_cash";
+export type BasReportingCadence = "monthly" | "quarterly";
+
+export interface BasPreparationSettings {
+  accountingBasis: BasAccountingBasis;
+  cadence: BasReportingCadence;
+  reportingMethod: "simpler_bas";
+}
+
 /**
  * Tax settings
  */
 export interface TaxSettings {
   taxType: TaxType;
   defaultRate: number; // e.g., 0.10 for 10%
+  gstRegistration?: GstRegistrationSettings;
+  basPreparation?: BasPreparationSettings;
 }
 
 /**

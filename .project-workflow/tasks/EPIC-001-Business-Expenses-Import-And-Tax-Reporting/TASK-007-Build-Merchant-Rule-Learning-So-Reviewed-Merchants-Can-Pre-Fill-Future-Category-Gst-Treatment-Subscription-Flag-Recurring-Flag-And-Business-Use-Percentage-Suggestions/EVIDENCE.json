@@ -1,0 +1,61 @@
+{
+  "task_id": "TASK-007",
+  "claims": [
+    {
+      "id": "CLM-001",
+      "parent_ac": "AC9",
+      "claim": "Owner and staff users can create and update one deterministic tenant merchant rule from a confirmed expense, while unauthenticated and cross-tenant callers are denied and inactive rules do not apply.",
+      "recipe": "runtime-target-source",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T11:54:32+10:00",
+      "execution_target": "http://localhost:3001 with Firebase Auth and Firestore emulators",
+      "source_artifact": "src/lib/expenses/merchant-rules.ts, src/app/workspace/expenses/accounting-actions.ts, and src/app/workspace/expenses/actions.ts from the current working tree",
+      "observation_method": "Synthetic owner, staff, outsider, inactive, reactivation, import, and re-import emulator scenarios plus an empty-token access probe.",
+      "target_used_source_proof": "The emulator stored one deterministic rule, applied it only while active, accepted owner/staff changes, denied the outsider, preserved existing records on retry, and the direct empty-token probe returned Authentication is required.",
+      "evidence_artifact": "evidence/merchant-rule-qa.md",
+      "evidence_artifact_hash": "sha256:cf57b1687520d69ba5f2f0a9346750c3ba80bc1e30fcd221260e875619101262",
+      "invalid_substitutes": []
+    },
+    {
+      "id": "CLM-002",
+      "parent_ac": "AC9",
+      "claim": "A matching future candidate receives an editable user_rule suggestion without changing review status, and retries do not touch the rule, candidate, or confirmed expense.",
+      "recipe": "runtime-target-source",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T11:54:32+10:00",
+      "execution_target": "Focused merchant-rule tests and Firebase Firestore emulator imports",
+      "source_artifact": "src/lib/expenses/merchant-rules.ts, src/lib/expenses/merchant-rules.test.ts, and src/app/workspace/expenses/actions.ts from the current working tree",
+      "observation_method": "Five pure matching tests and synthetic first-import, exact-retry, inactive-rule, and reactivation emulator scenarios.",
+      "target_used_source_proof": "All 15 expense tests passed; the first matching import stored rule provenance, the retry was skipped without timestamp churn, and inactive imports omitted the suggestion.",
+      "evidence_artifact": "evidence/merchant-rule-qa.md",
+      "evidence_artifact_hash": "sha256:cf57b1687520d69ba5f2f0a9346750c3ba80bc1e30fcd221260e875619101262",
+      "invalid_substitutes": []
+    },
+    {
+      "id": "CLM-003",
+      "parent_ac": "AC9",
+      "claim": "The expense workspace labels learned suggestions, pre-fills every supported accountant field, preserves owner overrides on confirmation, and exposes rule status at desktop and mobile widths.",
+      "recipe": "responsive-visual-behavior",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T11:54:32+10:00",
+      "reference_artifact": "TASK-007 REQUIREMENTS.md AC7 and IMPLEMENTATION.md",
+      "delivered_artifact": "http://localhost:3001/workspace/expenses from the current working tree",
+      "viewports": [
+        "1280x900",
+        "390x844"
+      ],
+      "contexts": [
+        "Authenticated synthetic tenant owner",
+        "Matching active merchant rule and unreviewed candidate",
+        "Confirmed owner override and learned-rule settings"
+      ],
+      "comparison_method": "In-app Browser DOM snapshots, field interaction, persisted confirmed-row inspection, rendered screenshots, mobile table reachability checks, and console inspection.",
+      "evidence_artifact": "evidence/merchant-rule-qa.md",
+      "evidence_artifact_hash": "sha256:cf57b1687520d69ba5f2f0a9346750c3ba80bc1e30fcd221260e875619101262",
+      "invalid_substitutes": []
+    }
+  ]
+}

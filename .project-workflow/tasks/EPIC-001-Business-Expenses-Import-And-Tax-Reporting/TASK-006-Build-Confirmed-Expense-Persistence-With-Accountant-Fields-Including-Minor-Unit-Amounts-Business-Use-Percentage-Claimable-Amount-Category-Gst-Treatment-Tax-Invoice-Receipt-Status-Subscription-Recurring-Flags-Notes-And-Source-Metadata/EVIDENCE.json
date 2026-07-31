@@ -1,0 +1,61 @@
+{
+  "task_id": "TASK-006",
+  "claims": [
+    {
+      "id": "CLM-001",
+      "parent_ac": "AC6",
+      "claim": "A reviewed Business or Mixed use candidate is converted into one deterministic confirmed expense and atomically linked to its source, while invalid states, retries, concurrent confirmation, and later reclassification cannot create a second expense.",
+      "recipe": "runtime-target-source",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T11:23:43+10:00",
+      "execution_target": "http://localhost:3001 with Firebase Auth and Firestore emulators",
+      "source_artifact": "src/app/workspace/expenses/accounting-actions.ts, src/app/workspace/expenses/actions.ts, and src/lib/expenses/firestore.ts from the current working tree",
+      "observation_method": "Synthetic emulator probe of Business, Mixed use, Personal, Ignore, already-confirmed, concurrent, retry, and cross-tenant scenarios plus an in-app Browser confirmation journey.",
+      "target_used_source_proof": "The emulator produced one concurrent success and one rejection, kept one deterministic expense per candidate, rejected invalid states and confirmed reclassification, and the running UI moved the selected candidate to a single confirmed row.",
+      "evidence_artifact": "evidence/confirmed-expense-qa.md",
+      "evidence_artifact_hash": "sha256:3fed4df854dfb0f44de18806dcdb43c3630814523981a1496797257011de65d9",
+      "invalid_substitutes": []
+    },
+    {
+      "id": "CLM-002",
+      "parent_ac": "AC7",
+      "claim": "Business-use, potential GST, and claimable GST amounts use deterministic minor-unit arithmetic and explicit effective-dated registration, retaining potential GST while suppressing an unsupported credit.",
+      "recipe": "runtime-target-source",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T11:23:43+10:00",
+      "execution_target": "Focused calculation tests and http://localhost:3001 with Firebase emulators",
+      "source_artifact": "src/lib/expenses/calculations.ts, src/lib/expenses/calculations.test.ts, and src/app/workspace/expenses/accounting-actions.ts from the current working tree",
+      "observation_method": "Ten focused unit tests, persisted emulator readback, and a browser confirmation of a pre-registration taxable purchase.",
+      "target_used_source_proof": "The test matrix passed; the emulator stored a mixed-use amount of 35200 minor units and GST of 3200; the browser showed $11.00 potential GST but $0.00 claimable GST for a July purchase under an August registration.",
+      "evidence_artifact": "evidence/confirmed-expense-qa.md",
+      "evidence_artifact_hash": "sha256:3fed4df854dfb0f44de18806dcdb43c3630814523981a1496797257011de65d9",
+      "invalid_substitutes": []
+    },
+    {
+      "id": "CLM-003",
+      "parent_ac": "AC8",
+      "claim": "The confirmed-expense workspace presents and edits accountant-controlled fields, explicitly separates potential from claimable GST, exposes registration review state, and remains coherent at desktop and mobile widths.",
+      "recipe": "responsive-visual-behavior",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T11:23:43+10:00",
+      "reference_artifact": "TASK-006 REQUIREMENTS.md AC7-AC13 and IMPLEMENTATION.md",
+      "delivered_artifact": "http://localhost:3001/workspace/expenses from the current working tree",
+      "viewports": [
+        "1280x900",
+        "390x844"
+      ],
+      "contexts": [
+        "Authenticated synthetic tenant owner",
+        "Confirmed expenses with mixed-use, recurring, registration review, and pre-registration states",
+        "Explicit GST registration and tenant category settings"
+      ],
+      "comparison_method": "In-app Browser operation, DOM snapshots, rendered screenshots, desktop column-track inspection, and mobile mode-label and horizontal-table reachability checks.",
+      "evidence_artifact": "evidence/confirmed-expense-qa.md",
+      "evidence_artifact_hash": "sha256:3fed4df854dfb0f44de18806dcdb43c3630814523981a1496797257011de65d9",
+      "invalid_substitutes": []
+    }
+  ]
+}

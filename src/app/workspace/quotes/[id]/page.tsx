@@ -62,7 +62,11 @@ export default function QuoteDetailPage() {
 
             setTenantId(resolvedTenantId);
 
-            const settingsResult = await getTenantSettings(resolvedTenantId);
+            const idToken = await user.getIdToken();
+            const settingsResult = await getTenantSettings(
+                resolvedTenantId,
+                idToken,
+            );
             if (
                 settingsResult.success &&
                 settingsResult.data?.tax?.taxType &&

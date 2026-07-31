@@ -1,0 +1,59 @@
+version = 1
+name = "client-management-app"
+
+[setup]
+script = """
+set -e
+
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
+  . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+fi
+
+if command -v nvm >/dev/null 2>&1; then
+  nvm use --silent
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node 20 is required. Install it or make it available through NVM before retrying." >&2
+  exit 1
+fi
+
+node -e 'const major = Number(process.versions.node.split(".")[0]); if (major !== 20) { console.error(`Node 20 is required; found ${process.version}.`); process.exit(1); }'
+npm_config_cache="${TMPDIR:-/tmp}/client-management-app-codex-npm-cache"
+export npm_config_cache
+mkdir -p "$npm_config_cache"
+npm ci
+"""
+
+[[actions]]
+name = "Dev"
+command = """
+set -e
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"; fi
+if command -v nvm >/dev/null 2>&1; then nvm use --silent; fi
+node -e 'const major = Number(process.versions.node.split(".")[0]); if (major !== 20) { console.error(`Node 20 is required; found ${process.version}.`); process.exit(1); }'
+export WATCHPACK_POLLING=true
+npm run dev
+"""
+
+[[actions]]
+name = "Validate"
+command = """
+set -e
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"; fi
+if command -v nvm >/dev/null 2>&1; then nvm use --silent; fi
+node -e 'const major = Number(process.versions.node.split(".")[0]); if (major !== 20) { console.error(`Node 20 is required; found ${process.version}.`); process.exit(1); }'
+npm run test:expenses
+npx tsc --noEmit
+npm run lint
+npm run build
+"""
+
+[[actions]]
+name = "Firebase Emulators"
+command = """
+set -e
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"; fi
+if command -v nvm >/dev/null 2>&1; then nvm use --silent; fi
+npm run emulators
+"""

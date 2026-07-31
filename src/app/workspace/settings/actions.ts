@@ -1,5 +1,9 @@
 "use server";
 
+import { FieldValue } from "firebase-admin/firestore";
+
+import { normalizeGstRegistration } from "@/lib/expenses/calculations";
+import { assertExpenseTenantAccess } from "@/lib/expenses/firestore";
 import { adminDb } from "@/lib/firebase-admin";
 import { TenantSettings } from "@/types/tenant";
 
@@ -13,12 +17,11 @@ export interface ActionResult<T = void> {
  * Get tenant settings
  */
 export async function getTenantSettings(
-  tenantId: string
+  tenantId: string,
+  idToken: string,
 ): Promise<ActionResult<TenantSettings | null>> {
   try {
-    if (!tenantId) {
-      return { success: false, error: "No tenant ID provided" };
-    }
+    await assertExpenseTenantAccess(tenantId, idToken);
 
     const settingsDoc = await adminDb
       .collection("tenants")
@@ -53,22 +56,32 @@ export async function getTenantSettings(
  */
 export async function updateTenantSettings(
   tenantId: string,
-  userId: string,
-  settings: Partial<TenantSettings>
+  idToken: string,
+  settings: Partial<TenantSettings>,
 ): Promise<ActionResult> {
   try {
-    if (!tenantId) {
-      return { success: false, error: "No tenant ID provided" };
+    const { userId, role } = await assertExpenseTenantAccess(tenantId, idToken);
+    if (role !== "owner") {
+      return { success: false, error: "Only owners can update business settings" };
     }
 
-    if (!userId) {
-      return { success: false, error: "No user ID provided" };
+    const { updatedAt: _updatedAt, updatedBy: _updatedBy, ...safeSettings } =
+      settings;
+    void _updatedAt;
+    void _updatedBy;
+
+    if (safeSettings.tax?.gstRegistration) {
+      safeSettings.tax = {
+        ...safeSettings.tax,
+        gstRegistration: normalizeGstRegistration(
+          safeSettings.tax.gstRegistration,
+        ),
+      };
     }
 
-    // Add metadata
     const updateData = {
-      ...settings,
-      updatedAt: new Date(),
+      ...safeSettings,
+      updatedAt: FieldValue.serverTimestamp(),
       updatedBy: userId,
     };
 

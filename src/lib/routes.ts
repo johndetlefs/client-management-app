@@ -21,6 +21,7 @@ export const WORKSPACE_ROUTES = {
   CLIENTS: "/workspace/clients",
   JOBS: "/workspace/jobs", // Future
   INVOICES: "/workspace/invoices", // Future
+  EXPENSES: "/workspace/expenses",
   QUOTES: "/workspace/quotes",
   SETTINGS: "/workspace/settings",
 } as const;
@@ -108,6 +109,11 @@ export const WORKSPACE_NAV_ITEMS: NavItem[] = [
     label: "Invoices",
     href: WORKSPACE_ROUTES.INVOICES,
     icon: "📄",
+  },
+  {
+    label: "Expenses",
+    href: WORKSPACE_ROUTES.EXPENSES,
+    icon: "💳",
   },
   {
     label: "Quotes",

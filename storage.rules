@@ -34,6 +34,12 @@ service firebase.storage {
       allow read: if belongsToTenant(tenantId);
       allow write: if belongsToTenant(tenantId);
     }
+
+    // Expense statements, receipts, and exports are available only through
+    // authenticated server routes. Clients cannot choose or access paths.
+    match /tenants/{tenantId}/expenses/{allPaths=**} {
+      allow read, write: if false;
+    }
     
     // Deny all other access
     match /{allPaths=**} {

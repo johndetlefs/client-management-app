@@ -1,0 +1,59 @@
+{
+  "task_id": "TASK-011",
+  "claims": [
+    {
+      "id": "CLM-001",
+      "parent_ac": "AC6",
+      "claim": "Personal and Ignore candidates receive a 90-day full-detail deadline and are then minimized to dedupe-only fields, while Business, Mixed use, and confirmed records clear that deadline.",
+      "recipe": "visual-reference-fidelity",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T14:22:47+10:00",
+      "reference_artifact": "TASK-011 REQUIREMENTS.md AC5-AC6 and parent AC6",
+      "delivered_artifact": "Tenant candidate retention fields, bounded minimisation action, and Files & privacy controls from the current working tree",
+      "comparison_method": "Pure 90-day boundary tests, Firebase emulator minimisation and re-import regression, and in-app Browser desktop/mobile inspection.",
+      "evidence_artifact": "evidence/source-files-privacy-qa.md",
+      "evidence_artifact_hash": "sha256:4aaf30050ef038c38295707f5f3bfdb30902d7d22fe0e50dc8c1ae7167573349",
+      "invalid_substitutes": []
+    },
+    {
+      "id": "CLM-002",
+      "parent_ac": "AC15",
+      "claim": "Source statements, receipts, and generated exports use server-generated tenant paths, private authenticated routes, validated content, explicit deletion, and coherent desktop/mobile controls.",
+      "recipe": "visual-reference-fidelity",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T14:22:47+10:00",
+      "reference_artifact": "TASK-011 REQUIREMENTS.md AC1-AC8 and parent AC15",
+      "delivered_artifact": "Expense file validation/storage layer, authenticated file/export routes, receipt linkage, storage rules, and Files & privacy workspace from the current working tree",
+      "comparison_method": "File signature tests, Storage/Firestore emulator lifecycle and cross-tenant probes, repository privacy scan, and in-app Browser checks at 1280x720 and 390x844.",
+      "evidence_artifact": "evidence/source-files-privacy-qa.md",
+      "evidence_artifact_hash": "sha256:4aaf30050ef038c38295707f5f3bfdb30902d7d22fe0e50dc8c1ae7167573349",
+      "invalid_substitutes": []
+    },
+    {
+      "id": "CLM-003",
+      "parent_ac": "AC15",
+      "claim": "Source-account, receipt, retention, download, deletion, and minimisation controls remain readable and operable without page-level overflow at desktop and mobile widths.",
+      "recipe": "responsive-visual-behavior",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T14:22:47+10:00",
+      "reference_artifact": "TASK-011 REQUIREMENTS.md AC8 and parent AC15",
+      "delivered_artifact": "Files & privacy tab at http://localhost:3000/workspace/expenses from the current working tree",
+      "viewports": [
+        "1280x720",
+        "390x844"
+      ],
+      "contexts": [
+        "Authenticated synthetic tenant owner",
+        "Stored synthetic QIF source",
+        "Attached synthetic PDF receipt"
+      ],
+      "comparison_method": "In-app Browser DOM snapshots, rendered screenshots, document-width measurements, and browser console inspection.",
+      "evidence_artifact": "evidence/source-files-privacy-qa.md",
+      "evidence_artifact_hash": "sha256:4aaf30050ef038c38295707f5f3bfdb30902d7d22fe0e50dc8c1ae7167573349",
+      "invalid_substitutes": []
+    }
+  ]
+}

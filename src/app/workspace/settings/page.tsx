@@ -7,7 +7,11 @@ import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { getTenantSettings, updateTenantSettings } from './actions';
-import { TenantSettings, type TaxType } from '@/types/tenant';
+import {
+    TenantSettings,
+    type GstRegistrationStatus,
+    type TaxType,
+} from '@/types/tenant';
 import { getCurrentUserTenantId } from '@/lib/tenant';
 
 export default function SettingsPage() {
@@ -31,8 +35,11 @@ export default function SettingsPage() {
             accountNumber: '',
         },
         tax: {
-            taxType: 'GST',
-            defaultRate: 0.10,
+            taxType: 'None',
+            defaultRate: 0,
+            gstRegistration: {
+                status: 'unknown',
+            },
         },
         invoicePrefix: '',
         invoiceTerms: '',
@@ -59,7 +66,8 @@ export default function SettingsPage() {
 
             setTenantId(tid);
 
-            const result = await getTenantSettings(tid);
+            const idToken = await user.getIdToken();
+            const result = await getTenantSettings(tid, idToken);
 
             if (result.success && result.data) {
                 const data = result.data;
@@ -91,7 +99,8 @@ export default function SettingsPage() {
         setError('');
         setSuccess('');
 
-        const result = await updateTenantSettings(tenantId, user.uid, settings);
+        const idToken = await user.getIdToken();
+        const result = await updateTenantSettings(tenantId, idToken, settings);
 
         if (result.success) {
             setSuccess('Settings saved successfully!');
@@ -304,9 +313,9 @@ export default function SettingsPage() {
                                 min="0"
                                 max="100"
                                 value={
-                                    settings.tax?.defaultRate
+                                    settings.tax?.defaultRate !== undefined
                                         ? (settings.tax.defaultRate * 100).toFixed(2)
-                                        : '10.00'
+                                        : '0.00'
                                 }
                                 onChange={(e) => {
                                     const percentage = parseFloat(e.target.value) || 0;
@@ -324,6 +333,84 @@ export default function SettingsPage() {
                                 Enter as percentage (e.g., 10 for 10%)
                             </p>
                         </div>
+
+                        <div className="border-t border-foreground/10 pt-4">
+                            <label className="block text-sm font-medium mb-2">
+                                GST registration
+                            </label>
+                            <select
+                                value={settings.tax?.gstRegistration?.status || 'unknown'}
+                                onChange={(e) => {
+                                    const status = e.target.value as GstRegistrationStatus;
+                                    setSettings({
+                                        ...settings,
+                                        tax: {
+                                            ...settings.tax!,
+                                            gstRegistration: {
+                                                ...settings.tax?.gstRegistration,
+                                                status,
+                                                effectiveFrom:
+                                                    status === 'registered'
+                                                        ? settings.tax?.gstRegistration?.effectiveFrom
+                                                        : undefined,
+                                                effectiveTo:
+                                                    status === 'registered'
+                                                        ? settings.tax?.gstRegistration?.effectiveTo
+                                                        : undefined,
+                                            },
+                                        },
+                                    });
+                                }}
+                                className="w-full rounded-lg border border-foreground/20 bg-background px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                            >
+                                <option value="unknown">Not confirmed</option>
+                                <option value="not_registered">Not registered</option>
+                                <option value="registered">Registered</option>
+                            </select>
+                            <p className="mt-1 text-xs text-foreground/60">
+                                Expense GST credits use this status and its effective dates.
+                            </p>
+                        </div>
+
+                        {settings.tax?.gstRegistration?.status === 'registered' && (
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <Input
+                                    label="GST registered from"
+                                    type="date"
+                                    required
+                                    value={settings.tax.gstRegistration.effectiveFrom || ''}
+                                    onChange={(e) =>
+                                        setSettings({
+                                            ...settings,
+                                            tax: {
+                                                ...settings.tax!,
+                                                gstRegistration: {
+                                                    ...settings.tax!.gstRegistration!,
+                                                    effectiveFrom: e.target.value,
+                                                },
+                                            },
+                                        })
+                                    }
+                                />
+                                <Input
+                                    label="GST registration ended"
+                                    type="date"
+                                    value={settings.tax.gstRegistration.effectiveTo || ''}
+                                    onChange={(e) =>
+                                        setSettings({
+                                            ...settings,
+                                            tax: {
+                                                ...settings.tax!,
+                                                gstRegistration: {
+                                                    ...settings.tax!.gstRegistration!,
+                                                    effectiveTo: e.target.value || undefined,
+                                                },
+                                            },
+                                        })
+                                    }
+                                />
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

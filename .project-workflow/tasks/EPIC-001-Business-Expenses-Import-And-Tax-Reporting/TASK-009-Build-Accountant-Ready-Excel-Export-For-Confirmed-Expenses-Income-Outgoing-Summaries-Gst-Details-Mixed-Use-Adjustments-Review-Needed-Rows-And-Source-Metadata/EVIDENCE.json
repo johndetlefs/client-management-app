@@ -1,0 +1,44 @@
+{
+  "task_id": "TASK-009",
+  "claims": [
+    {
+      "id": "CLM-001",
+      "parent_ac": "AC11",
+      "claim": "The accountant export delivers the approved five-sheet workbook with reconciled confirmed-expense, issued-invoice, GST, review-needed, mixed-use, and import-source information, and its workspace controls remain coherent at desktop and mobile widths.",
+      "recipe": "visual-reference-fidelity",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T13:15:58+10:00",
+      "reference_artifact": "TASK-009 REQUIREMENTS.md AC1-AC5 and IMPLEMENTATION.md",
+      "delivered_artifact": "Authenticated XLSX response from http://localhost:3000/api/expenses/accountant-export and rendered controls at http://localhost:3000/workspace/expenses from the current working tree",
+      "comparison_method": "ExcelJS workbook round-trip inspection and exact minor-unit reconciliation, authenticated emulator route probes, in-app Browser DOM and rendered checks at 1280x900 and 390x844, server response log, and browser console inspection.",
+      "evidence_artifact": "evidence/accountant-export-qa.md",
+      "evidence_artifact_hash": "sha256:4652177bfead4d5582d9339ec14f8aa1ad3932c633449a58972ec13b4520b708",
+      "invalid_substitutes": []
+    },
+    {
+      "id": "CLM-002",
+      "parent_ac": "AC11",
+      "claim": "Authenticated accountant-export date controls and the export command remain readable, operable, and free of incoherent overlap or page-level horizontal overflow at desktop and mobile widths.",
+      "recipe": "responsive-visual-behavior",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T13:15:58+10:00",
+      "reference_artifact": "TASK-009 REQUIREMENTS.md AC1 and AC5 and IMPLEMENTATION.md",
+      "delivered_artifact": "http://localhost:3000/workspace/expenses from the current working tree",
+      "viewports": [
+        "1280x900",
+        "390x844"
+      ],
+      "contexts": [
+        "Authenticated synthetic tenant owner",
+        "Confirmed tab with one mixed-use expense",
+        "Selected financial-year export date range"
+      ],
+      "comparison_method": "In-app Browser DOM snapshots, rendered screenshots, element bounding rectangles, document overflow measurements, route response log, and browser console inspection.",
+      "evidence_artifact": "evidence/accountant-export-qa.md",
+      "evidence_artifact_hash": "sha256:4652177bfead4d5582d9339ec14f8aa1ad3932c633449a58972ec13b4520b708",
+      "invalid_substitutes": []
+    }
+  ]
+}

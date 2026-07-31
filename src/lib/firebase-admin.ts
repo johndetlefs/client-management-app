@@ -4,19 +4,30 @@
  */
 
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
+import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getStorage, type Storage } from "firebase-admin/storage";
 
 let adminApp: App;
+let adminAuth: Auth;
 let adminDb: Firestore;
+let adminStorage: Storage;
 
 /**
  * Initialize Firebase Admin SDK
  * Supports both emulator (development) and production environments
  */
 function initializeFirebaseAdmin() {
+  if (process.env.NODE_ENV === "development") {
+    process.env.FIREBASE_AUTH_EMULATOR_HOST ||= "localhost:9099";
+    process.env.STORAGE_EMULATOR_HOST ||= "http://localhost:9199";
+  }
+
   if (getApps().length > 0) {
     adminApp = getApps()[0];
+    adminAuth = getAuth(adminApp);
     adminDb = getFirestore(adminApp);
+    adminStorage = getStorage(adminApp);
     return;
   }
 
@@ -24,9 +35,14 @@ function initializeFirebaseAdmin() {
   if (process.env.NODE_ENV === "development") {
     adminApp = initializeApp({
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-project",
+      storageBucket:
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+        `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-project"}.appspot.com`,
     });
 
+    adminAuth = getAuth(adminApp);
     adminDb = getFirestore(adminApp);
+    adminStorage = getStorage(adminApp);
 
     // Connect to Firestore emulator
     const firestoreHost =
@@ -51,6 +67,7 @@ function initializeFirebaseAdmin() {
       adminApp = initializeApp({
         credential: cert(serviceAccount),
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
       });
     } else if (
       process.env.FIREBASE_ADMIN_CLIENT_EMAIL &&
@@ -77,6 +94,7 @@ function initializeFirebaseAdmin() {
           ),
         }),
         projectId,
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
       });
     } else {
       throw new Error(
@@ -85,10 +103,12 @@ function initializeFirebaseAdmin() {
     }
 
     adminDb = getFirestore(adminApp);
+    adminAuth = getAuth(adminApp);
+    adminStorage = getStorage(adminApp);
   }
 }
 
 // Initialize on module load
 initializeFirebaseAdmin();
 
-export { adminApp, adminDb };
+export { adminApp, adminAuth, adminDb, adminStorage };

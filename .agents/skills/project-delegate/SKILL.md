@@ -1,41 +1,39 @@
 ---
 name: project-delegate
-description: Use when coordinating multiple project-workflow implementation work items through project-implement.
+description: Use when coordinating multiple planned project-workflow work items with sequential or dependency-aware parallel execution.
 ---
+<!-- project-workflow:generated -->
 
 # Project Delegate
 
-Coordinate delegated execution of planned work items.
+Coordinate multiple work items from an existing project-workflow implementation plan.
 
 ## Invocation Rules
 
-- Use this skill whenever the user asks to delegate, batch, parallelize, or coordinate multiple project-workflow work items.
-- Read `AGENTS.md` first and follow its Workflow Skill Map and CLI Requirements.
-- Delegation routes each work item through `project-implement`; it does not replace requirements, planning, or implementation rules.
+- Use this skill whenever the user asks to delegate, coordinate, batch, parallelize, or run multiple planned work items.
+- Read `AGENTS.md` and `.project-workflow/guidance.md` if present, then follow the project-workflow managed block and CLI requirements.
+- Requirements, clarification, and planning must already be complete before delegation.
+- Delegation routes each eligible work item through `project-implement`; it does not bypass validation, QA/code review, or retro.
 
-## Inputs
+## Required Files
 
-- Task ID
-- Work item IDs
-- Mode: `sequential` or `parallel`
-- Dependency map, if any
-- Worker limit for parallel mode, default `4`
+- `.project-workflow/tasks/<TASK>/REQUIREMENTS.md`
+- `.project-workflow/tasks/<TASK>/IMPLEMENTATION.md`
+- `.project-workflow/TRACKER.md`
+- Repo instruction files such as `AGENTS.md`
 
 ## Workflow
 
-1. Confirm the task and work items exist in `IMPLEMENTATION.md`.
-2. Default to `sequential` if the user does not specify a mode.
-3. In `sequential` mode, run one work item at a time in the requested order.
-4. In `parallel` mode, validate dependencies before starting:
-   - no unknown item IDs
+1. Identify the task and the requested work items from the user prompt or `IMPLEMENTATION.md`.
+2. Read requirements and implementation plan before launching any work.
+3. Validate the delegation mode:
+   - `sequential` when order matters or mode is omitted
+   - `parallel` only when dependencies are explicit and independent items can safely run together
+4. Validate dependency maps strictly:
+   - no unknown work item IDs
    - no self-dependencies
    - no cycles
-5. Launch only eligible work items whose prerequisites are complete.
-6. On first work-item failure, stop launching new items, let in-progress items finish, and mark unstarted blocked items as `halted` in the report.
-7. Report each item status and a final aggregate summary with completed, failed, and halted items.
-
-## Guardrails
-
-- Do not start implementation when requirements or planning are missing.
-- Do not mark a task complete unless validation has passed and the user explicitly asks.
-- Keep tracker updates consistent with `project-implement`.
+5. Route each eligible item through `project-implement` with a clear scope boundary.
+6. Use fail-fast launch behavior for new items while allowing in-flight work to finish and report results.
+7. After delegated implementation reaches `Testing`, run `project-qa-review` before completion.
+8. After completion, run `project-retro` for durable convention or agent updates.

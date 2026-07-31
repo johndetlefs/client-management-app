@@ -1,0 +1,20 @@
+{
+  "task_id": "TASK-012",
+  "claims": [
+    {
+      "id": "CLM-001",
+      "parent_ac": "AC15",
+      "claim": "The observed bank QIF dialect imports through the same authenticated, occurrence-aware pipeline as CSV, same-format and cross-format overlaps remain idempotent, and PDF remains private source evidence without transaction extraction.",
+      "recipe": "visual-reference-fidelity",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T14:22:47+10:00",
+      "reference_artifact": "TASK-012 REQUIREMENTS.md AC1-AC5, structure-only owner-supplied QIF inspection, and parent AC15",
+      "delivered_artifact": "QIF parser, shared import persistence, source upload path, and rendered Expenses workspace from the current working tree",
+      "comparison_method": "Synthetic parser tests, privacy-safe 111-record structural comparison, Firebase emulator same-format/cross-format overlap and malformed-input probes, plus in-app Browser QIF and PDF upload checks.",
+      "evidence_artifact": "evidence/qif-import-qa.md",
+      "evidence_artifact_hash": "sha256:8882e4d3eba052678875baa38d92103b39adc1248df5bae24ea7d5bc9c0c1730",
+      "invalid_substitutes": []
+    }
+  ]
+}

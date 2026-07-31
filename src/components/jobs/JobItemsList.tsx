@@ -23,7 +23,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
-    const [defaultTaxRate, setDefaultTaxRate] = useState<number>(0.10); // Default to 10% (0.10)
+    const [defaultTaxRate, setDefaultTaxRate] = useState<number>(0);
     const [taxType, setTaxType] = useState<string>('Tax'); // Default to 'Tax'
 
     // Job item form state
@@ -41,7 +41,9 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     // Load tenant settings to get default tax rate and tax type
     useEffect(() => {
         async function loadSettings() {
-            const result = await getTenantSettings(tenantId);
+            if (!user) return;
+            const idToken = await user.getIdToken();
+            const result = await getTenantSettings(tenantId, idToken);
             if (result.success && result.data?.tax?.defaultRate) {
                 setDefaultTaxRate(result.data.tax.defaultRate);
             }
@@ -50,7 +52,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
             }
         }
         loadSettings();
-    }, [tenantId]);
+    }, [tenantId, user]);
 
     // Load job items
     useEffect(() => {

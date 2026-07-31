@@ -45,7 +45,8 @@ export default function QuotePrintPage() {
                 return;
             }
 
-            const settingsResult = await getTenantSettings(tenantId);
+            const idToken = await user.getIdToken();
+            const settingsResult = await getTenantSettings(tenantId, idToken);
             if (settingsResult.success) {
                 setSettings(settingsResult.data || null);
             }

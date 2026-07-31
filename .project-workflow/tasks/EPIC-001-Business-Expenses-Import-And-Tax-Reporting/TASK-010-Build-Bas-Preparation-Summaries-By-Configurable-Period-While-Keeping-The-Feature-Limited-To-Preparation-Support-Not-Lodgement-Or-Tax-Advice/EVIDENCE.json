@@ -1,0 +1,44 @@
+{
+  "task_id": "TASK-010",
+  "claims": [
+    {
+      "id": "CLM-001",
+      "parent_ac": "AC12",
+      "claim": "The BAS preparation workspace requires explicit basis and cadence, reconciles registered and non-registered monthly or quarterly summaries in minor units, and fails closed where cash-basis sales evidence is unavailable.",
+      "recipe": "visual-reference-fidelity",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T14:22:47+10:00",
+      "reference_artifact": "TASK-010 REQUIREMENTS.md AC1-AC8 and parent AC12",
+      "delivered_artifact": "BAS preparation actions, aggregation model, and rendered workspace at http://localhost:3000/workspace/expenses from the current working tree",
+      "comparison_method": "Pure period and reconciliation tests, Firebase emulator owner/staff/outsider probes, and in-app Browser rendered checks at 1280x720 and 390x844 with console and document-overflow inspection.",
+      "evidence_artifact": "evidence/bas-preparation-qa.md",
+      "evidence_artifact_hash": "sha256:2c4a20b7be86d90eea618e39bfad4471320ffb1d3957e0480b53052aa5495387",
+      "invalid_substitutes": []
+    },
+    {
+      "id": "CLM-002",
+      "parent_ac": "AC12",
+      "claim": "BAS configuration, reporting-period selection, caveats, and summary status remain readable and operable without page-level overflow at desktop and mobile widths.",
+      "recipe": "responsive-visual-behavior",
+      "status": "pass",
+      "commit": "764e333c69bf4dbde53aad355bf03422cbd8fc08+working-tree",
+      "timestamp": "2026-07-29T14:22:47+10:00",
+      "reference_artifact": "TASK-010 REQUIREMENTS.md AC8 and parent AC12",
+      "delivered_artifact": "BAS preparation tab at http://localhost:3000/workspace/expenses from the current working tree",
+      "viewports": [
+        "1280x720",
+        "390x844"
+      ],
+      "contexts": [
+        "Authenticated synthetic tenant owner",
+        "Cash basis and quarterly cadence",
+        "Prepared current-quarter summary with evidence limitation"
+      ],
+      "comparison_method": "In-app Browser DOM snapshots, rendered screenshots, document-width measurements, and browser console inspection.",
+      "evidence_artifact": "evidence/bas-preparation-qa.md",
+      "evidence_artifact_hash": "sha256:2c4a20b7be86d90eea618e39bfad4471320ffb1d3957e0480b53052aa5495387",
+      "invalid_substitutes": []
+    }
+  ]
+}
