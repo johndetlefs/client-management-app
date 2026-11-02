@@ -1,3 +1,4 @@
+import { previewCorrection } from "@/lib/invoice-corrections/domain";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { exclusiveTaxMinor } from "./money";
@@ -37,6 +38,7 @@ test("actual receipts reject future dates rather than settling invoices ahead of
 test("earlier consideration qualifies both the payment and invoice noncash BAS periods", () => {
   for (const period of [sept,oct]) assert.ok(nonCashAttributionReasons([inv],[receipt],period).some(s=>s.includes("predates")));
   assert.deepEqual(nonCashAttributionReasons([inv],[{...receipt,date:"2026-10-07"}],oct),[]);
+  assert.deepEqual(nonCashAttributionReasons([inv],[{...receipt,date:"2026-10-01"}],oct),[]);
   assert.deepEqual(nonCashAttributionReasons([inv],[{...receipt,reversedBy:"correction"}],sept),[]);
 });
 test("unallocated and undated payments cannot silently disappear from noncash attribution", () => {
@@ -46,4 +48,11 @@ test("unallocated and undated payments cannot silently disappear from noncash at
 test("qualified noncash attribution withholds G1 1A and net rather than assigning today's period", () => {
  const result=buildBasPreparationSummary({settings:{accountingBasis:"non_cash",cadence:"quarterly",reportingMethod:"simpler_bas"},registration:settings.tax.gstRegistration,period:sept,expenses:[],invoices:[],attributionReviewReasons:nonCashAttributionReasons([inv],[receipt],sept)});
  assert.equal(result.status,"needs_review");assert.equal(result.g1TotalSalesMinor,null);assert.equal(result.oneAGstOnSalesMinor,null);assert.equal(result.netGstMinor,null);
+});
+
+test("legacy full-credit correction cannot duplicate an existing general credit or applied credit", () => {
+  const input = { id: "legacy-overlap", originalIds: ["old"], reason: "Synthetic correction", evidence: "Synthetic", taxRateBps: 0, periods: [{ invoiceId: "old", lineIndex: 0, from: "2026-09-01", through: "2026-09-30" }], receiptMatches: [], unresolved: [], omittedLines: [], dueDate: "2026-12-31", attachments: [] };
+  const original = { id: "old", version: "v", clientId: "client", clientName: "Synthetic", number: "SYN", currency: "AUD", status: "sent", issueDate: "2026-09-01", lines: [{ jobItemId: "item", jobId: "job", jobTitle: "Synthetic", title: "Service", unit: "unit" as const, quantity: 1, unitPriceMinor: 100000, gstApplicable: false, subtotalMinor: 100000, taxMinor: 0, totalMinor: 100000 }], subtotalMinor: 100000, taxMinor: 0, totalMinor: 100000, amountPaidMinor: 0, ledgerPaidMinor: 0, legacyUndatedMinor: 0, lockedJobItemIds: [], snapshot: {} };
+  for (const snapshot of [{ creditNoteIssuedMinor: 50000 }, { creditAppliedMinor: 10000 }]) assert.throws(() => previewCorrection(input, { today: date, originals: [{ ...original, snapshot }], receipts: [], registration: { status: "not_registered" }, registrationEvidence: "" }), /existing client credits/);
+  assert.equal(previewCorrection(input, { today: date, originals: [original], receipts: [], registration: { status: "not_registered" }, registrationEvidence: "" }).creditTotalMinor,-100000);
 });

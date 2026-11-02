@@ -13,6 +13,7 @@ export function previewCorrection(input: CorrectionInput, context: CorrectionCon
   const originals = input.originalIds.map(id => { const original = context.originals.find(o => o.id === id); if (!original) throw new Error("Original invoice missing"); return original; });
   if (new Set(originals.map(o => o.clientId)).size !== 1 || originals.some(o => o.currency !== "AUD")) throw new Error("Originals must be for the same client in AUD");
   if (originals.some(o => ["draft", "void", "credited"].includes(o.status) || o.snapshot.creditedBy || o.snapshot.correctionId)) throw new Error("Original is unavailable or already credited");
+  if (originals.some(o => minor(o.snapshot.creditNoteIssuedMinor ?? 0) > 0 || minor(o.snapshot.creditAppliedMinor ?? 0) > 0)) throw new Error("Original has existing client credits. Use its client-credit workflow rather than crediting it again.");
   const sum = (values: number[]) => add(...values);
   for (const o of originals) {
     calendarDate(o.issueDate);

@@ -11,7 +11,7 @@ export function nonCashAttributionReasons(invoices: FinancialInvoice[], receipts
   for (const invoice of invoices.filter(i => !["draft", "void"].includes(i.status))) {
     if (invoice.legacyUndatedMinor > 0) reasons.add("Undated payments need an attribution date before non-cash BAS labels can be calculated.");
     const first = active.filter(r => r.allocations.some(a => a.invoiceId === invoice.id && a.amountMinor > 0)).map(r => r.date).sort()[0];
-    if (first && first < invoice.issueDate && (inside(first) || inside(invoice.issueDate))) reasons.add("A payment predates its invoice. Review the earlier consideration date before assigning non-cash sales and GST to a BAS period.");
+    if (first && first < invoice.issueDate && (inside(first) !== inside(invoice.issueDate))) reasons.add("A payment predates its invoice. Review the earlier consideration date before assigning non-cash sales and GST to a BAS period.");
   }
   return [...reasons];
 }

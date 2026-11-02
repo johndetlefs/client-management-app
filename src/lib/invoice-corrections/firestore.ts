@@ -38,7 +38,7 @@ export async function loadCorrectionWorkspace(tenantId: string, idToken: string)
   await requireFinanceOwner(tenantId, idToken); const refs = financeRefs(tenantId);
   const [invoices, receipts, corrections] = await Promise.all([refs.invoices.limit(201).get(), refs.receipts.limit(201).get(), refs.tenant.collection("invoiceCorrections").limit(101).get()]);
   if (invoices.size > 200 || receipts.size > 200 || corrections.size > 100) throw new Error("Correction workspace limit exceeded; no partial inventory returned");
-  return { invoices: invoices.docs.filter(d => !["draft", "void"].includes(d.get("status")) && !d.get("creditedBy") && !d.get("correctionId")).map(original), receipts: json(receipts.docs.map(d => ({ ...d.data(), id: d.id }))) as Receipt[], corrections: json(corrections.docs.map(d => d.data())) as InvoiceCorrection[] };
+  return { invoices: invoices.docs.filter(d => !["draft", "void"].includes(d.get("status")) && !d.get("creditedBy") && !d.get("correctionId") && !d.get("creditNoteIssuedMinor") && !d.get("creditAppliedMinor")).map(original), receipts: json(receipts.docs.map(d => ({ ...d.data(), id: d.id }))) as Receipt[], corrections: json(corrections.docs.map(d => d.data())) as InvoiceCorrection[] };
 }
 export async function prepareCorrection(tenantId: string, idToken: string, input: CorrectionInput, expectedRevision = 0) {
   const access = await requireFinanceOwner(tenantId, idToken); validateInput(input);
