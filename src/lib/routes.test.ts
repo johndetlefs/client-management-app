@@ -20,7 +20,7 @@ test("legacy payment URL retains selected invoice and encoded query values", () 
     assert.equal(legacyFinanceDestination({ invoice: "a/b", note: "one & two" }), "/workspace/payments?invoice=a%2Fb&note=one+%26+two");
     assert.equal(legacyFinanceDestination({ tab: "reports" }), "/workspace/reports/receivables");
 });
-test("breadcrumbs identify ordinary list create edit and print routes without raw IDs", () => {
+test("route metadata identifies ordinary list create edit and print routes without raw IDs", () => {
     assert.equal(getWorkspaceNavigation("/workspace/credits").detail, undefined);
     assert.equal(getWorkspaceNavigation("/workspace/credits/new").detail, "New");
     assert.equal(getWorkspaceNavigation("/workspace/credits/note/edit").detail, "Edit");

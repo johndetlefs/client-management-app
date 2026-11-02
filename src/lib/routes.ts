@@ -137,7 +137,7 @@ export function isWithinRoute(path: string, href: string): boolean {
   return path === href || path.startsWith(href + "/");
 }
 
-/** Shared by desktop, mobile and breadcrumbs so documents never acquire different parents. */
+/** Shared by desktop and mobile navigation so documents retain the same group. */
 export function getWorkspaceNavigation(path: string) {
   const section = [...WORKSPACE_NAV_ITEMS, SETTINGS_SECTION].find(group =>
     isWithinRoute(path, group.href) || group.children.some(item => isWithinRoute(path, item.href))
