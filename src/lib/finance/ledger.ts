@@ -22,6 +22,7 @@ export function validateAllocations(amountMinor: number, allocations: ReceiptAll
     resourceId(allocation.invoiceId, "invoice");
     const invoice = invoices.find((i) => i.id === allocation.invoiceId);
     if (!invoice || invoice.creditedBy || ["draft", "void"].includes(invoice.status)) throw new Error("Invoice unavailable for receipt allocation");
+    if (invoice.currency && invoice.currency !== "AUD") throw new Error("AUD receipts cannot be allocated to a different invoice currency");
     const replaces = minor(allocation.replacesLegacyMinor || 0);
     if (allocation.amountMinor <= 0 || replaces < 0 || replaces > allocation.amountMinor || replaces > invoice.legacyUndatedMinor) throw new Error("Invalid allocation or legacy replacement");
     const ledgerPaidMinor = add(invoice.ledgerPaidMinor, allocation.amountMinor);
@@ -34,6 +35,7 @@ export function validateAllocations(amountMinor: number, allocations: ReceiptAll
 
 export function validateReceipt(input: Pick<Receipt, "date" | "amountMinor" | "accountId" | "evidence" | "movementId">, movement?: Movement) {
   financialDate(input.date);
+  if (movement?.currency && movement.currency !== "AUD") throw new Error("Dated receipts currently support AUD movements only");
   resourceId(input.accountId, "account");
   if (!input.evidence?.trim() || input.evidence.length > 2000) throw new Error("Source evidence is required (maximum 2,000 characters)");
   if (minor(input.amountMinor) <= 0) throw new Error("Receipt must be positive");

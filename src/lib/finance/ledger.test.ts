@@ -134,3 +134,10 @@ test("transfers need opposite equal amounts in different accounts with no prior 
   assert.throws(() => validateTransfer(debit, { ...credit, amountMinor: credit.amountMinor - 1 }), /opposite/);
   assert.throws(() => validateTransfer(debit, { ...credit, receiptId: "receipt" }), /linked/);
 });
+
+
+test("AUD receipt allocation rejects foreign invoice currency and preserves legacy AUD defaults",()=>{
+ assert.throws(()=>validateAllocations(10000,[{invoiceId:"foreign",amountMinor:10000}],[invoice("foreign",{currency:"NZD"})]),/different invoice currency/);
+ assert.equal(validateAllocations(10000,[{invoiceId:"legacy",amountMinor:10000}],[invoice("legacy")])[0].balanceDueMinor,90000);
+ assert.equal(validateAllocations(10000,[{invoiceId:"aud",amountMinor:10000}],[invoice("aud",{currency:"AUD"})])[0].amountPaidMinor,10000);
+});

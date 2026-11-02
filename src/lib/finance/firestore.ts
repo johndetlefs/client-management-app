@@ -214,6 +214,7 @@ export async function recordReceipt(tenantId: string, idToken: string, input: Re
     }
     const account = await tx.get(refs.accounts.doc(input.accountId));
     if (!account.exists) throw new Error("Account not found");
+    if ((account.get("currency") || "AUD") !== "AUD") throw new Error("Dated receipts currently support AUD accounts only");
     const movementSnapshot = input.movementId ? await tx.get(refs.movements.doc(input.movementId)) : undefined;
     const movement = movementSnapshot?.data() as Movement | undefined;
     validateReceipt(input, movement);

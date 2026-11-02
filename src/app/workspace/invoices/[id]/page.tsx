@@ -202,7 +202,7 @@ export default function InvoiceDetailPage() {
     const canEdit = isDraft;
     const canVoid = !invoice.creditedBy && !invoice.correctionId && !invoice.creditAppliedMinor && !invoice.creditNoteIssuedMinor && userRole === "owner" && invoice.status !== "void" && invoice.status !== "draft";
     const canDelete = isDraft;
-    const canUpdatePayment = invoice.status !== "draft" && invoice.status !== "void";
+    const canUpdatePayment = invoice.status !== "draft" && invoice.status !== "void" && (!invoice.currency || invoice.currency === "AUD");
     const canIssue = isDraft && invoice.lines.length > 0;
 
     return (

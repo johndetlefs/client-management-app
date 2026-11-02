@@ -173,15 +173,20 @@ export async function getBasPreparationSummary(
     const expenses = expenseSnapshot.docs.map((doc) =>
       toBasExpenseSource({ ...doc.data(), id: doc.id } as Expense),
     );
-    const correctionReview = await adminDb.collection(`tenants/${tenantId}/invoiceCorrections`).where("status", "==", "posted").limit(1).get();
-    const invoices = invoiceSnapshot.docs.map((doc) =>
+    const [correctionReview, clientCreditReview] = await Promise.all([
+      adminDb.collection(`tenants/${tenantId}/invoiceCorrections`).where("status", "==", "posted").limit(1).get(),
+      adminDb.collection(`tenants/${tenantId}/creditNotes`).where("status", "==", "issued").limit(1).get(),
+    ]);
+    const foreignCurrencySales = invoiceSnapshot.docs.some(doc => (doc.get("currency") || "AUD") !== "AUD");
+    const invoices = invoiceSnapshot.docs.filter(doc => !doc.get("currency") || doc.get("currency") === "AUD").map((doc) =>
       toBasInvoiceSource({ ...doc.data(), id: doc.id } as Invoice),
     );
 
     return {
       success: true,
       data: buildBasPreparationSummary({
-        correctionReviewRequired: !correctionReview.empty,
+        correctionReviewRequired: !correctionReview.empty || !clientCreditReview.empty,
+        foreignCurrencySales,
         settings,
         registration,
         period,

@@ -7,7 +7,7 @@ import {correctReceipt,saveReceipt} from "./actions";
 import {buttonClass,fieldClass,money,secondaryClass} from "./styles";
 type Records={accounts:FinancialAccount[];invoices:FinancialInvoice[];receipts:Receipt[]};
 export function LedgerPanel({records,tenantId,token,done}:{records:Records;tenantId:string;token:()=>Promise<string>;done:()=>Promise<void>}){
- const parameters=useSearchParams(),selected=records.invoices.find(i=>i.id===parameters.get("invoice"));
+ const parameters=useSearchParams(),selected=records.invoices.find(i=>i.id===parameters.get("invoice")&&(!i.currency||i.currency==="AUD")&&!["draft","void"].includes(i.status)&&!i.creditedBy);
  const [open,setOpen]=useState(!!selected),[date,setDate]=useState(""),[amount,setAmount]=useState(selected?(selected.balanceDueMinor/100).toFixed(2):""),[account,setAccount]=useState(records.accounts.find(a=>a.currency==="AUD")?.id||""),[evidence,setEvidence]=useState("");
  const [allocations,setAllocations]=useState(()=>selected?[{invoiceId:selected.id,amount:(selected.balanceDueMinor/100).toFixed(2),replaceLegacy:false}]:[] as {invoiceId:string;amount:string;replaceLegacy:boolean}[]);
  const [requestId,setRequestId]=useState(()=>crypto.randomUUID()),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[reverse,setReverse]=useState(""),[reason,setReason]=useState("");

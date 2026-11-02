@@ -150,6 +150,7 @@ export function listBasPeriods(
 
 export function buildBasPreparationSummary(input: {
   correctionReviewRequired?: boolean;
+  foreignCurrencySales?: boolean;
   settings: BasPreparationSettings;
   registration: GstRegistrationSettings | undefined;
   period: BasPeriod;
@@ -254,6 +255,7 @@ export function buildBasPreparationSummary(input: {
   );
   const reviewReasons: string[] = [];
   if (input.correctionReviewRequired) reviewReasons.push("Credit note adjustments need a GST reporting period.");
+  if (input.foreignCurrencySales) reviewReasons.push("Foreign-currency invoices are excluded from AUD sales; supported currency conversion is required.");
   if (reviewNeededCount > 0) {
     reviewReasons.push(
       `${reviewNeededCount} expense${reviewNeededCount === 1 ? "" : "s"} require GST or evidence review.`,
@@ -272,9 +274,13 @@ export function buildBasPreparationSummary(input: {
     reviewReasons.push("GST registration ends during the selected period.");
   }
 
-  if (settings.accountingBasis === "cash" || input.correctionReviewRequired) {
+  if (settings.accountingBasis === "cash" || input.correctionReviewRequired || input.foreignCurrencySales) {
     reviewReasons.push(
-      "Cash-basis sales and GST on sales are unavailable because invoices store cumulative payments without dated payment events.",
+      settings.accountingBasis === "cash"
+        ? "Cash-basis sales and GST on sales are unavailable because invoices store cumulative payments without dated payment events."
+        : input.correctionReviewRequired
+          ? "Sales and GST labels are withheld until credit adjustment reporting periods are resolved."
+          : "Sales and GST labels are withheld until foreign-currency sales are converted to AUD.",
     );
     return {
       version: BAS_PREPARATION_VERSION,
