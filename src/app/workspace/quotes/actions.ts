@@ -21,6 +21,9 @@ import {
   QuoteCounter,
   QuoteLine,
 } from "@/types/quote";
+import { exclusiveTaxMinor } from "@/lib/finance/money";
+import { assertDraftTaxCurrent, draftTaxContext, refreshDraftTaxLines, invoiceGstRate } from "@/lib/finance/gst";
+import { sydneyDate } from "@/lib/finance/period";
 import { TenantSettings } from "@/types/tenant";
 
 type ActionResult<T = void> =
@@ -150,7 +153,7 @@ function createQuoteLineFromJobItem(
 ): QuoteLine {
   const subtotalMinor = Math.round(item.quantity * item.unitPriceMinor);
   const gstApplicable = item.gstApplicable ?? true;
-  const taxMinor = gstApplicable ? Math.round(subtotalMinor * taxRate) : 0;
+  const taxMinor = gstApplicable ? exclusiveTaxMinor(subtotalMinor, taxRate) : 0;
 
   const line: QuoteLine = {
     jobItemId: item.id,
@@ -342,7 +345,7 @@ export async function createQuoteFromJob(
       const settings = settingsSnap.exists
         ? (settingsSnap.data() as TenantSettings)
         : null;
-      const taxRate = settings?.tax?.defaultRate || 0;
+      const taxRate = invoiceGstRate(settings, sydneyDate());
 
       const itemRefs = uniqueItemIds.map((itemId) =>
         adminDb.doc(`tenants/${tenantId}/jobItems/${itemId}`),
@@ -561,6 +564,23 @@ export async function updateQuoteDetails(
   }
 }
 
+export async function refreshDraftQuoteTotals(tenantId: string, userId: string, quoteId: string, idToken: string): Promise<ActionResult<Quote>> {
+  try {
+    const access = await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare", claimedUserId: userId });
+    assertResourceId(quoteId, "quoteId");
+    await adminDb.runTransaction(async transaction => {
+      const ref = adminDb.doc(`tenants/${tenantId}/quotes/${quoteId}`);
+      const [snapshot, settingsDoc] = await transaction.getAll(ref, adminDb.doc(`tenants/${tenantId}/settings/business`));
+      if (!snapshot.exists || snapshot.get("status") !== "draft") throw new Error("Only draft quotes can be recalculated");
+      const old = snapshot.data() as Quote, settings = settingsDoc.data() as TenantSettings | undefined, date = sydneyDate();
+      const lines = refreshDraftTaxLines(old.lines || [], settings, date), totals = computeQuoteTotals(lines);
+      transaction.update(ref, { lines, ...totals, taxCalculation: draftTaxContext(settings, date), updatedAt: FieldValue.serverTimestamp() });
+      transaction.create(adminDb.collection(`tenants/${tenantId}/financialAudit`).doc(), { action: "quote-draft-tax-refresh", recordId: quoteId, actor: access.userId, at: new Date().toISOString(), before: { taxMinor: old.taxMinor || 0, totalMinor: old.totalMinor }, after: { ...totals, taxCalculation: draftTaxContext(settings, date) }, reason: "Explicit draft totals refresh" });
+    });
+    return getQuoteForEdit(tenantId, userId, quoteId, idToken);
+  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Failed to refresh draft totals" }; }
+}
+
 export async function updateQuoteStatus(
   tenantId: string,
   userId: string,
@@ -602,6 +622,10 @@ export async function updateQuoteStatus(
         throw new Error("Only sent quotes can be marked as accepted");
       }
 
+      if (nextStatus === "sent") {
+        const settings = await transaction.get(adminDb.doc(`tenants/${tenantId}/settings/business`));
+        assertDraftTaxCurrent(quoteData as Quote, settings.data() as TenantSettings | undefined, sydneyDate());
+      }
       const statusUpdate: Record<string, unknown> = {
         status: nextStatus,
         updatedAt: FieldValue.serverTimestamp(),

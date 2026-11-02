@@ -26,6 +26,7 @@ import {
     addItemsToInvoice,
     removeItemFromInvoice,
     issueInvoice,
+    refreshDraftInvoiceTotals,
     voidInvoice,
     deleteDraftInvoice,
     getOpenJobItemsForClient,
@@ -112,6 +113,16 @@ export default function InvoiceDetailPage() {
         } finally {
             setProcessing(false);
         }
+    };
+
+    const refreshTotals = async () => {
+        if (!tenantId || !invoice) return;
+        setProcessing(true);
+        try {
+            const result = await refreshDraftInvoiceTotals(tenantId, invoice.id, await requireActionIdToken());
+            setNotice(result.success ? "Draft totals refreshed. Review the amounts before issuing." : result.error);
+        } catch { setNotice("Failed to refresh draft totals"); }
+        finally { setProcessing(false); }
     };
 
     const executeIssueInvoice = async () => {
@@ -460,6 +471,7 @@ export default function InvoiceDetailPage() {
                         Delete Draft
                     </Button>
                 )}
+                {canIssue && <Button variant="secondary" onClick={refreshTotals} disabled={processing}>Refresh totals</Button>}
                 {canIssue && (
                     <Button onClick={handleIssueInvoice} disabled={processing}>
                         Issue Invoice

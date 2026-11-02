@@ -1,6 +1,7 @@
 import { add, minor } from "./money";
 import { financialDate, resourceId } from "./native-csv";
 import type { FinancialInvoice, Movement, Receipt, ReceiptAllocation } from "./types";
+import { sydneyDate } from "./period";
 import { determineInvoiceStatus } from "@/lib/invoice-utils";
 import type { InvoiceStatus } from "@/types/invoice";
 
@@ -35,6 +36,7 @@ export function validateAllocations(amountMinor: number, allocations: ReceiptAll
 
 export function validateReceipt(input: Pick<Receipt, "date" | "amountMinor" | "accountId" | "evidence" | "movementId">, movement?: Movement) {
   financialDate(input.date);
+  if (input.date > sydneyDate()) throw new Error("Actual receipts cannot have a future date");
   if (movement?.currency && movement.currency !== "AUD") throw new Error("Dated receipts currently support AUD movements only");
   resourceId(input.accountId, "account");
   if (!input.evidence?.trim() || input.evidence.length > 2000) throw new Error("Source evidence is required (maximum 2,000 characters)");

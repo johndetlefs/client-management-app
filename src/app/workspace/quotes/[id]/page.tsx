@@ -22,6 +22,7 @@ import {
     regenerateQuotePublicToken,
     updateQuoteDetails,
     updateQuoteStatus,
+    refreshDraftQuoteTotals,
 } from "../actions";
 import { getTenantSettings } from "@/app/workspace/settings/actions";
 
@@ -36,6 +37,8 @@ export default function QuoteDetailPage() {
     const [saving, setSaving] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [regeneratingToken, setRegeneratingToken] = useState(false);
+    const [notice, setNotice] = useState("");
+    const [pendingAction, setPendingAction] = useState<{ message: string; run: () => Promise<void> } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [quoteDisplayNumber, setQuoteDisplayNumber] = useState("");
     const [notes, setNotes] = useState("");
@@ -134,7 +137,7 @@ export default function QuoteDetailPage() {
                 result.data.quoteDisplayNumber || result.data.quoteNumber || "",
             );
             setNotes(result.data.notes || "");
-            alert("Quote updated successfully.");
+            setNotice("Quote updated successfully.");
         } catch (updateError) {
             console.error("Error updating quote:", updateError);
             setError("Failed to update quote");
@@ -143,19 +146,8 @@ export default function QuoteDetailPage() {
         }
     };
 
-    const handleStatusChange = async (nextStatus: "sent" | "accepted" | "cancelled") => {
+    const executeStatusChange = async (nextStatus: "sent" | "accepted" | "cancelled") => {
         if (!tenantId || !user || !quote) {
-            return;
-        }
-
-        const confirmationMessage =
-            nextStatus === "sent"
-                ? "Mark this quote as sent?"
-                : nextStatus === "accepted"
-                    ? "Mark this quote as accepted?"
-                    : "Cancel this quote?";
-
-        if (!confirm(confirmationMessage)) {
             return;
         }
 
@@ -178,12 +170,8 @@ export default function QuoteDetailPage() {
         }
     };
 
-    const handleRegeneratePublicLink = async () => {
+    const executeRegeneratePublicLink = async () => {
         if (!tenantId || !user || !quote) {
-            return;
-        }
-
-        if (!confirm("Regenerate public link? The old link will stop working immediately.")) {
             return;
         }
 
@@ -198,13 +186,26 @@ export default function QuoteDetailPage() {
             }
 
             setQuote(result.data);
-            alert("Public link regenerated successfully.");
+            setNotice("Public link regenerated successfully.");
         } catch (tokenError) {
             console.error("Error regenerating public quote link:", tokenError);
             setError("Failed to regenerate public link");
         } finally {
             setRegeneratingToken(false);
         }
+    };
+
+    const handleStatusChange = (status: "sent" | "accepted" | "cancelled") => setPendingAction({ message: status === "sent" ? "Mark this quote as sent? No email is sent." : status === "accepted" ? "Mark this quote as accepted?" : "Cancel this quote?", run: () => executeStatusChange(status) });
+    const handleRegeneratePublicLink = () => setPendingAction({ message: "Regenerate public link? The old link will stop working immediately.", run: executeRegeneratePublicLink });
+    const refreshTotals = async () => {
+        if (!tenantId || !user || !quote) return;
+        setUpdatingStatus(true); setError(null);
+        try {
+            const result = await refreshDraftQuoteTotals(tenantId, user.uid, quote.id, await requireActionIdToken());
+            if (result.success) { setQuote(result.data); setNotice("Draft totals refreshed. Review the amounts before marking as sent."); }
+            else setError(result.error);
+        } catch { setError("Failed to refresh draft totals"); }
+        finally { setUpdatingStatus(false); }
     };
 
     if (loading) {
@@ -233,6 +234,8 @@ export default function QuoteDetailPage() {
 
     return (
         <div className="p-8 max-w-5xl mx-auto">
+            {notice && <p role="status" className="mb-4 rounded-lg border p-3">{notice}</p>}
+            {pendingAction && <section aria-label="Confirm quote action" className="mb-4 space-y-3 rounded-lg border p-4"><p>{pendingAction.message}</p><Button type="button" variant="secondary" onClick={() => setPendingAction(null)}>Cancel</Button><Button type="button" disabled={saving || updatingStatus || regeneratingToken} onClick={() => { const action = pendingAction; setPendingAction(null); void action.run(); }}>Confirm action</Button></section>}
             <div className="mb-6">
                 <Link href="/workspace/quotes" className="text-blue-600 hover:underline mb-2 inline-block">
                     ← Back to Quotes
@@ -274,8 +277,7 @@ export default function QuoteDetailPage() {
                             variant="secondary"
                             onClick={() => {
                                 const url = `${window.location.origin}/public/quote/${quote.publicToken}`;
-                                navigator.clipboard.writeText(url);
-                                alert("Link copied to clipboard!");
+                                void navigator.clipboard.writeText(url).then(() => setNotice("Link copied to clipboard."), () => setError("Unable to copy link"));
                             }}
                         >
                             Copy Link
@@ -356,6 +358,7 @@ export default function QuoteDetailPage() {
                             >
                                 Preview / Print
                             </Button>
+                            {quote.status === "draft" && <Button type="button" variant="secondary" onClick={refreshTotals} disabled={saving || updatingStatus}>Refresh totals</Button>}
                             {quote.status === "draft" && (
                                 <Button
                                     type="button"

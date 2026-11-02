@@ -1,8 +1,11 @@
 "use server";
 
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { periodBounds, sydneyDate } from "@/lib/finance/period";
+import { FieldValue } from "firebase-admin/firestore";
+import { sydneyDate } from "@/lib/finance/period";
 import { loadFinancialReport } from "@/lib/finance/report-firestore";
+import { financialInvoice } from "@/lib/finance/firestore";
+import { nonCashAttributionReasons } from "@/lib/finance/bas-non-cash";
+import type { Receipt } from "@/lib/finance/types";
 import { cashBasFromReport } from "@/lib/finance/bas-cash";
 
 import {
@@ -153,10 +156,7 @@ export async function getBasPreparationSummary(
     }
 
     const refs = tenantExpenseCollectionRefs(tenantId);
-    const bounds = periodBounds({ start: period.startDate, end: period.endDate, label: period.label });
-    const start = Timestamp.fromDate(bounds.start);
-    const end = Timestamp.fromDate(bounds.endExclusive);
-    const [expenseSnapshot, invoiceSnapshot] = await Promise.all([
+    const [expenseSnapshot, invoiceSnapshot, receiptSnapshot] = await Promise.all([
       refs.expenses
         .where("date", ">=", period.startDate)
         .where("date", "<=", period.endDate)
@@ -164,11 +164,13 @@ export async function getBasPreparationSummary(
         .get(),
       adminDb
         .collection(`tenants/${tenantId}/invoices`)
-        .where("issueDate", ">=", start)
-        .where("issueDate", "<", end)
-        .orderBy("issueDate", "asc")
+        .limit(20001)
         .get(),
+      adminDb.collection(`tenants/${tenantId}/invoiceReceipts`).limit(20001).get(),
     ]);
+    if (invoiceSnapshot.size > 20000 || receiptSnapshot.size > 20000) throw new Error("BAS history limit exceeded; no partial summary produced");
+    const allInvoices = invoiceSnapshot.docs.map(doc => financialInvoice(doc.id, doc.data()));
+    const attributionReviewReasons = nonCashAttributionReasons(allInvoices, receiptSnapshot.docs.map(doc => doc.data() as Receipt), period);
 
     const expenses = expenseSnapshot.docs.map((doc) =>
       toBasExpenseSource({ ...doc.data(), id: doc.id } as Expense),
@@ -177,14 +179,16 @@ export async function getBasPreparationSummary(
       adminDb.collection(`tenants/${tenantId}/invoiceCorrections`).where("status", "==", "posted").limit(1).get(),
       adminDb.collection(`tenants/${tenantId}/creditNotes`).where("status", "==", "issued").limit(1).get(),
     ]);
-    const foreignCurrencySales = invoiceSnapshot.docs.some(doc => (doc.get("currency") || "AUD") !== "AUD");
-    const invoices = invoiceSnapshot.docs.filter(doc => !doc.get("currency") || doc.get("currency") === "AUD").map((doc) =>
+    const periodInvoices = invoiceSnapshot.docs.filter(doc => { const date = serializeDate(doc.get("issueDate")); return date && date >= period.startDate && date <= period.endDate; });
+    const foreignCurrencySales = periodInvoices.some(doc => (doc.get("currency") || "AUD") !== "AUD");
+    const invoices = periodInvoices.filter(doc => !doc.get("currency") || doc.get("currency") === "AUD").map((doc) =>
       toBasInvoiceSource({ ...doc.data(), id: doc.id } as Invoice),
     );
 
     return {
       success: true,
       data: buildBasPreparationSummary({
+        attributionReviewReasons,
         correctionReviewRequired: !correctionReview.empty || !clientCreditReview.empty,
         foreignCurrencySales,
         settings,

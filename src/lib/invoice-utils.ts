@@ -4,6 +4,7 @@ import {
   TaxBreakdown,
   InvoiceStatus,
 } from "@/types/invoice";
+import { exclusiveTaxMinor } from "@/lib/finance/money";
 import { QuoteStatus } from "@/types/quote";
 import { JobItem } from "@/types/jobItem";
 
@@ -29,7 +30,7 @@ export function createInvoiceLineFromJobItem(
   const subtotalMinor = Math.round(item.quantity * item.unitPriceMinor);
   // Default to true for legacy items that don't have gstApplicable field
   const gstApplicable = item.gstApplicable ?? true;
-  const taxMinor = gstApplicable ? Math.round(subtotalMinor * taxRate) : 0;
+  const taxMinor = gstApplicable ? exclusiveTaxMinor(subtotalMinor, taxRate) : 0;
   const totalMinor = subtotalMinor + taxMinor;
 
   const line: InvoiceLine = {

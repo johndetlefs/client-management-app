@@ -22,3 +22,11 @@ export function parseSignedMoney(value: string): number {
   const amount = BigInt(match[2] || "0") * BigInt(100) + BigInt((match[3] || match[4] || "").padEnd(2, "0"));
   return minor(Number(match[1] ? -amount : amount));
 }
+
+/** Round a GST-exclusive integer-cent amount half up at a bounded basis-point rate. */
+export function exclusiveTaxMinor(netMinor: number, rate: number): number {
+  minor(netMinor);
+  const bps = Math.round(rate * 10000);
+  if (netMinor < 0 || !Number.isFinite(rate) || rate < 0 || rate > 1 || Math.abs(rate - bps / 10000) > 1e-10) throw new Error("Invalid tax calculation input");
+  return minor(Number((BigInt(netMinor) * BigInt(bps) + BigInt(5000)) / BigInt(10000)));
+}

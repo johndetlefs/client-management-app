@@ -19,7 +19,7 @@ import {
   formatInvoiceNumber,
 } from "@/lib/invoice-utils";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { assertInvoiceGstSupported, invoiceGstRate } from "@/lib/finance/gst";
+import { assertDraftTaxCurrent, draftTaxContext, refreshDraftTaxLines, invoiceGstRate } from "@/lib/finance/gst";
 import { sydneyDate } from "@/lib/finance/period";
 
 type ActionResult<T = void> =
@@ -253,6 +253,8 @@ export async function addItemsToInvoice(
 
         const item = { id: itemSnap.id, ...itemSnap.data() } as JobItem;
 
+        if (item.clientId !== invoice.clientId) throw new Error("Job item belongs to another client");
+
         // Validate item is open and not locked
         if (item.status !== "open") {
           throw new Error(
@@ -281,10 +283,8 @@ export async function addItemsToInvoice(
       );
 
       jobSnaps.forEach((jobSnap) => {
-        if (jobSnap.exists) {
-          const job = jobSnap.data() as Job;
-          jobTitles.set(jobSnap.id, job.title);
-        }
+        if (!jobSnap.exists || jobSnap.get("clientId") !== invoice.clientId) throw new Error("Job belongs to another client or is unavailable");
+        jobTitles.set(jobSnap.id, String(jobSnap.get("title")));
       });
 
       // Create invoice lines
@@ -297,7 +297,7 @@ export async function addItemsToInvoice(
       );
 
       // Combine with existing lines
-      const allLines = [...invoice.lines, ...newLines];
+      const allLines = refreshDraftTaxLines([...invoice.lines, ...newLines], settings || undefined, sydneyDate());
 
       // Compute new totals
       const totals = computeInvoiceTotals(allLines, taxRate);
@@ -309,6 +309,7 @@ export async function addItemsToInvoice(
       // Update invoice
       transaction.update(invoiceRef, {
         lines: allLines,
+        taxCalculation: draftTaxContext(settings || undefined, sydneyDate()),
         lockedJobItemIds: [...invoice.lockedJobItemIds, ...jobItemIds],
         ...totals,
         balanceDueMinor,
@@ -385,9 +386,9 @@ export async function removeItemFromInvoice(
       const taxRate = invoiceGstRate(settings, sydneyDate());
 
       // Remove line from invoice
-      const updatedLines = invoice.lines.filter(
+      const updatedLines = refreshDraftTaxLines(invoice.lines.filter(
         (line) => line.jobItemId !== jobItemId,
-      );
+      ), settings || undefined, sydneyDate());
       const updatedLockedIds = invoice.lockedJobItemIds.filter(
         (id) => id !== jobItemId,
       );
@@ -399,9 +400,12 @@ export async function removeItemFromInvoice(
         invoice.amountPaidMinor,
       );
 
+      const itemRef = adminDb.doc(`tenants/${tenantId}/jobItems/${jobItemId}`);
+      const itemSnap = await transaction.get(itemRef);
       // Update invoice
       transaction.update(invoiceRef, {
         lines: updatedLines,
+        taxCalculation: draftTaxContext(settings || undefined, sydneyDate()),
         lockedJobItemIds: updatedLockedIds,
         ...totals,
         balanceDueMinor,
@@ -409,11 +413,6 @@ export async function removeItemFromInvoice(
       });
 
       // Unlock job item
-      const itemRef = adminDb
-        .collection(`tenants/${tenantId}/jobItems`)
-        .doc(jobItemId);
-      const itemSnap = await transaction.get(itemRef);
-
       // Only update if item exists
       if (itemSnap.exists) {
         transaction.update(itemRef, {
@@ -475,6 +474,26 @@ async function getNextInvoiceNumber(
   return nextNumber;
 }
 
+/** Explicitly refresh a draft only; the owner reviews changed totals before issue. */
+export async function refreshDraftInvoiceTotals(tenantId: string, invoiceId: string, idToken: string): Promise<ActionResult<void>> {
+  try {
+    const access = await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare" });
+    assertResourceId(invoiceId, "invoiceId");
+    await adminDb.runTransaction(async transaction => {
+      const ref = adminDb.doc(`tenants/${tenantId}/invoices/${invoiceId}`);
+      const [snapshot, settingsDoc] = await transaction.getAll(ref, adminDb.doc(`tenants/${tenantId}/settings/business`));
+      if (!snapshot.exists) throw new Error("Invoice not found");
+      const old = snapshot.data() as Invoice;
+      if (old.status !== "draft" || old.amountPaidMinor || old.creditAppliedMinor) throw new Error("Only unpaid draft invoices can be recalculated");
+      const settings = settingsDoc.data() as TenantSettings | undefined, date = sydneyDate();
+      const lines = refreshDraftTaxLines(old.lines, settings, date), totals = computeInvoiceTotals(lines, invoiceGstRate(settings, date));
+      transaction.update(ref, { lines, ...totals, balanceDueMinor: totals.totalMinor, taxCalculation: draftTaxContext(settings, date), updatedAt: FieldValue.serverTimestamp() });
+      transaction.create(adminDb.collection(`tenants/${tenantId}/financialAudit`).doc(), { action: "invoice-draft-tax-refresh", recordId: invoiceId, actor: access.userId, at: new Date().toISOString(), before: { taxMinor: old.taxMinor, totalMinor: old.totalMinor }, after: { ...totals, taxCalculation: draftTaxContext(settings, date) }, reason: "Explicit draft totals refresh" });
+    });
+    return { success: true, data: undefined };
+  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Failed to refresh draft totals" }; }
+}
+
 /**
  * Issue/send a draft invoice
  */
@@ -509,7 +528,9 @@ export async function issueInvoice(
       }
 
       const gstSettings = await transaction.get(adminDb.doc(`tenants/${tenantId}/settings/business`));
-      assertInvoiceGstSupported(invoice.taxMinor, gstSettings.data() as TenantSettings | undefined, sydneyDate());
+      const currentSettings = gstSettings.data() as TenantSettings | undefined;
+      assertDraftTaxCurrent(invoice, currentSettings, sydneyDate());
+      if (invoice.taxMinor > 0 && (!currentSettings?.businessName?.trim() || !currentSettings.abn?.trim() || !invoice.clientName?.trim())) throw new Error("Enter supplier business name and ABN and customer identity before issuing a tax invoice");
 
       // Get client to check for shortcode
       const clientRef = adminDb
@@ -556,6 +577,7 @@ export async function issueInvoice(
         invoiceDisplayNumber,
         issueDate,
         issuedBy: userId,
+        taxCalculation: draftTaxContext(currentSettings, sydneyDate()),
         updatedAt: FieldValue.serverTimestamp(),
       });
 

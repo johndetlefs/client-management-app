@@ -149,6 +149,7 @@ export function listBasPeriods(
 }
 
 export function buildBasPreparationSummary(input: {
+  attributionReviewReasons?: string[];
   correctionReviewRequired?: boolean;
   foreignCurrencySales?: boolean;
   settings: BasPreparationSettings;
@@ -274,13 +275,16 @@ export function buildBasPreparationSummary(input: {
     reviewReasons.push("GST registration ends during the selected period.");
   }
 
-  if (settings.accountingBasis === "cash" || input.correctionReviewRequired || input.foreignCurrencySales) {
+  if (settings.accountingBasis === "cash" || input.correctionReviewRequired || input.foreignCurrencySales || input.attributionReviewReasons?.length) {
+    reviewReasons.push(...(input.attributionReviewReasons || []));
     reviewReasons.push(
       settings.accountingBasis === "cash"
         ? "Cash-basis sales and GST on sales are unavailable because invoices store cumulative payments without dated payment events."
         : input.correctionReviewRequired
           ? "Sales and GST labels are withheld until credit adjustment reporting periods are resolved."
-          : "Sales and GST labels are withheld until foreign-currency sales are converted to AUD.",
+          : input.foreignCurrencySales
+            ? "Sales and GST labels are withheld until foreign-currency sales are converted to AUD."
+            : "Sales and GST labels are withheld until payment attribution is resolved.",
     );
     return {
       version: BAS_PREPARATION_VERSION,
