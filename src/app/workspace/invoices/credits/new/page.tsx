@@ -1,2 +1,2 @@
-import { CreditNoteForm } from "@/components/invoices/CreditNoteForm";
-export default function NewCreditPage() { return <CreditNoteForm />; }
+import { redirect } from "next/navigation";
+export default function LegacyCreditPage() { redirect("/workspace/credits/new"); }

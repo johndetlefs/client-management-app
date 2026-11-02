@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
@@ -100,7 +99,6 @@ export default function InvoicesPage() {
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-bold">Invoices</h1>
-                <Link className="underline" href="/workspace/invoices/credits">Credit notes</Link>
                     <p className="text-gray-600 mt-1">Manage and track your invoices</p>
                 </div>
                 <Button onClick={handleCreateNew}>

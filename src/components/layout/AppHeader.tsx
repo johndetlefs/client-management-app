@@ -56,7 +56,7 @@ export function AppHeader() {
                     </Link>
 
                     {/* Desktop Navigation */}
-                    <nav className="hidden md:flex items-center gap-6">
+                    <nav className="hidden xl:flex items-center gap-4">
                         {WORKSPACE_NAV_ITEMS.map((item: NavItem) => (
                             <Link
                                 key={item.href}
@@ -102,7 +102,7 @@ export function AppHeader() {
 
                     {/* Mobile Menu Button */}
                     <button
-                        className="md:hidden p-2 hover:bg-foreground/5 rounded-md transition-colors"
+                        className="xl:hidden p-2 hover:bg-foreground/5 rounded-md transition-colors"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                         aria-label="Toggle menu"
                     >
@@ -120,7 +120,7 @@ export function AppHeader() {
 
                 {/* Mobile Menu */}
                 {mobileMenuOpen && (
-                    <div className="md:hidden border-t border-foreground/10 bg-background">
+                    <div className="xl:hidden border-t border-foreground/10 bg-background">
                         <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
                             {WORKSPACE_NAV_ITEMS.map((item: NavItem) => (
                                 <Link

@@ -21,6 +21,7 @@ export const WORKSPACE_ROUTES = {
   CLIENTS: "/workspace/clients",
   JOBS: "/workspace/jobs", // Future
   INVOICES: "/workspace/invoices", // Future
+  CREDITS: "/workspace/credits",
   EXPENSES: "/workspace/expenses",
   FINANCES: "/workspace/finances",
   QUOTES: "/workspace/quotes",
@@ -58,6 +59,15 @@ export const INVOICE_ROUTES = {
   PUBLIC: (token: string) => `/public/invoice/${token}`, // Public invoice view
 } as const;
 
+export const CREDIT_ROUTES = {
+  LIST: WORKSPACE_ROUTES.CREDITS,
+  NEW: "/workspace/credits/new",
+  VIEW: (id: string) => `/workspace/credits/${id}`,
+  EDIT: (id: string) => `/workspace/credits/${id}/edit`,
+  PRINT: (id: string) => `/workspace/credits/${id}/print`,
+  PUBLIC: (token: string) => `/public/credit/${token}`,
+} as const;
+
 /**
  * Quote-specific routes
  */
@@ -78,6 +88,7 @@ export const ROUTES = {
   JOBS: JOB_ROUTES,
   INVOICES: INVOICE_ROUTES,
   QUOTES: QUOTE_ROUTES,
+  CREDITS: CREDIT_ROUTES,
 } as const;
 
 /**
@@ -110,6 +121,11 @@ export const WORKSPACE_NAV_ITEMS: NavItem[] = [
     label: "Invoices",
     href: WORKSPACE_ROUTES.INVOICES,
     icon: "📄",
+  },
+  {
+    label: "Credit notes",
+    href: WORKSPACE_ROUTES.CREDITS,
+    icon: "↩",
   },
   {
     label: "Expenses",

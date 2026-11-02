@@ -219,8 +219,8 @@ export default function InvoiceDetailPage() {
                         <h1 className="text-3xl font-bold">
                             {invoice.invoiceDisplayNumber || invoice.invoiceNumber || "Draft Invoice"}
                         </h1>
-                    {invoice.creditedBy && <p role="status" className="border p-3">Credited and replaced. <Link className="underline" href={`/workspace/invoices/credits/${invoice.creditedBy}`}>View credit note</Link></p>}
-                    {invoice.correctionId && <Link className="underline block" href={`/workspace/invoices/credits/${invoice.correctionId}`}>View credit note</Link>}
+                    {invoice.creditedBy && <p role="status" className="border p-3">Credited and replaced. <Link className="underline" href={`/workspace/credits/${invoice.creditedBy}`}>View credit note</Link></p>}
+                    {invoice.correctionId && <Link className="underline block" href={`/workspace/credits/${invoice.correctionId}`}>View credit note</Link>}
 
                         <p className="text-gray-600 mt-1">{invoice.clientName}</p>
                     </div>
@@ -408,7 +408,7 @@ export default function InvoiceDetailPage() {
                 )}
             </Card>
 
-            {!isDraft&&invoice.status!=="void"&&!invoice.creditedBy&&<InvoiceCreditsPanel invoiceId={invoice.id}/>}
+            {!isDraft && invoice.status !== "void" && !invoice.creditedBy && userRole === "owner" && <InvoiceCreditsPanel invoiceId={invoice.id} balanceDueMinor={invoice.balanceDueMinor} allowPayment={canUpdatePayment} />}
 
             {/* Notes */}
             {invoice.notes && (
@@ -458,11 +458,6 @@ export default function InvoiceDetailPage() {
                 {canDelete && (
                     <Button variant="secondary" onClick={handleDeleteDraft} disabled={processing}>
                         Delete Draft
-                    </Button>
-                )}
-                {canUpdatePayment && (
-                    <Button variant="secondary" onClick={() => router.push(`/workspace/finances?invoice=${encodeURIComponent(invoice.id)}`)} disabled={processing}>
-                        Record Dated Receipt
                     </Button>
                 )}
                 {canIssue && (
