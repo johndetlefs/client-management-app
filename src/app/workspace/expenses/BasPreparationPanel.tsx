@@ -221,7 +221,7 @@ function BasSummaryView({ summary }: { summary: BasPreparationSummary }) {
             Review status
           </h3>
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-            {summary.reviewNeededCount} expense
+            {summary.reviewNeededCount} {summary.version === "bas-dated-cash-v2" ? "review item" : "expense"}
             {summary.reviewNeededCount === 1 ? "" : "s"} need review.{" "}
             {summary.includedInvoiceCount} issued invoice
             {summary.includedInvoiceCount === 1 ? "" : "s"} contribute to the

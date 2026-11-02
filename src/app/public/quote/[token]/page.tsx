@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getQuoteByToken, getTenantSettingsForPublicQuote } from './actions';
-import { Quote } from '@/types/quote';
+import { getQuoteByToken, getTenantSettingsForPublicQuote, recordQuoteView } from './actions';
+import type { RecipientQuote } from '@/types/recipient-document';
 import {
     formatCurrency,
     formatDate,
@@ -15,7 +15,7 @@ import { getBillableUnitLabel } from '@/types/jobItem';
 export default function PublicQuotePage() {
     const params = useParams();
     const token = params.token as string;
-    const [quote, setQuote] = useState<Quote | null>(null);
+    const [quote, setQuote] = useState<RecipientQuote | null>(null);
     const [tenantSettings, setTenantSettings] = useState<{
         businessName?: string;
         abn?: string;
@@ -39,8 +39,9 @@ export default function PublicQuotePage() {
 
             if (result.success && result.data) {
                 setQuote(result.data);
+                await recordQuoteView(token);
 
-                const settingsResult = await getTenantSettingsForPublicQuote(result.data.tenantId);
+                const settingsResult = await getTenantSettingsForPublicQuote(result.data.tenantId, token);
                 if (settingsResult.success) {
                     setTenantSettings(settingsResult.data);
                 }

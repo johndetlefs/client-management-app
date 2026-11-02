@@ -43,10 +43,11 @@ export default function SignupPage() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await userCredential.getIdToken()}`,
                 },
                 body: JSON.stringify({
                     userId: userCredential.uid,
-                    email: email,
+                    email: userCredential.email,
                 }),
             });
 

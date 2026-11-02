@@ -1,5 +1,6 @@
 "use client";
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,7 +60,7 @@ export default function QuotePrintPage() {
                 setTaxLabel(settingsResult.data.tax.taxType);
             }
 
-            const result = await getQuoteForEdit(tenantId, user.uid, quoteId);
+            const result = await getQuoteForEdit(tenantId, user.uid, quoteId, await requireActionIdToken());
             if (!result.success) {
                 setError(result.error);
                 setLoading(false);

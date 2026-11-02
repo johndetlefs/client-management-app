@@ -1,6 +1,9 @@
 "use server";
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { periodBounds, sydneyDate } from "@/lib/finance/period";
+import { loadFinancialReport } from "@/lib/finance/report-firestore";
+import { cashBasFromReport } from "@/lib/finance/bas-cash";
 
 import {
   buildBasPreparationSummary,
@@ -144,13 +147,15 @@ export async function getBasPreparationSummary(
       return { success: false, error: "Selected BAS period is invalid" };
     }
 
+    if (settings.accountingBasis === "cash") {
+      const report = await loadFinancialReport(tenantId, idToken, { start: period.startDate, end: period.endDate, label: period.label });
+      return { success: true, data: cashBasFromReport(report, settings) };
+    }
+
     const refs = tenantExpenseCollectionRefs(tenantId);
-    const start = Timestamp.fromDate(
-      new Date(`${period.startDate}T00:00:00.000Z`),
-    );
-    const end = Timestamp.fromDate(
-      new Date(`${period.endDate}T23:59:59.999Z`),
-    );
+    const bounds = periodBounds({ start: period.startDate, end: period.endDate, label: period.label });
+    const start = Timestamp.fromDate(bounds.start);
+    const end = Timestamp.fromDate(bounds.endExclusive);
     const [expenseSnapshot, invoiceSnapshot] = await Promise.all([
       refs.expenses
         .where("date", ">=", period.startDate)
@@ -160,7 +165,7 @@ export async function getBasPreparationSummary(
       adminDb
         .collection(`tenants/${tenantId}/invoices`)
         .where("issueDate", ">=", start)
-        .where("issueDate", "<=", end)
+        .where("issueDate", "<", end)
         .orderBy("issueDate", "asc")
         .get(),
     ]);
@@ -168,6 +173,7 @@ export async function getBasPreparationSummary(
     const expenses = expenseSnapshot.docs.map((doc) =>
       toBasExpenseSource({ ...doc.data(), id: doc.id } as Expense),
     );
+    const correctionReview = await adminDb.collection(`tenants/${tenantId}/invoiceCorrections`).where("status", "==", "posted").limit(1).get();
     const invoices = invoiceSnapshot.docs.map((doc) =>
       toBasInvoiceSource({ ...doc.data(), id: doc.id } as Invoice),
     );
@@ -175,6 +181,7 @@ export async function getBasPreparationSummary(
     return {
       success: true,
       data: buildBasPreparationSummary({
+        correctionReviewRequired: !correctionReview.empty,
         settings,
         registration,
         period,
@@ -240,11 +247,11 @@ function serializeDate(value: Invoice["issueDate"]): string | undefined {
       : "toDate" in value
         ? value.toDate()
         : undefined;
-  return date?.toISOString().slice(0, 10);
+  return date ? sydneyDate(date) : undefined;
 }
 
 function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return sydneyDate();
 }
 
 function basFailure<T>(

@@ -419,6 +419,10 @@ export async function confirmExpenseCandidate(
         );
       }
 
+      const movementRef = candidate.financeMovementId ? adminDb.doc(`tenants/${tenantId}/financialMovements/${candidate.financeMovementId}`) : undefined;
+      const movement = movementRef ? await transaction.get(movementRef) : undefined;
+      if (movementRef && (access.role !== "owner" || !movement?.exists || movement.data()!.kind !== "expense" || movement.data()!.expenseId || movement.data()!.date !== candidate.postedDate || -movement.data()!.amountMinor !== candidate.amountMinor || movement.data()!.receiptId || movement.data()!.transferId)) throw new ExpenseAccountingError("Native expense source changed or requires its owner; reload before confirming");
+
       const businessUsePercent =
         candidate.reviewStatus === "business"
           ? 100
@@ -446,6 +450,7 @@ export async function confirmExpenseCandidate(
         id: confirmedExpenseDoc.id,
         tenantId,
         candidateId: candidate.id || candidateSnap.id,
+        financeMovementId: candidate.financeMovementId,
         importBatchId: candidate.importBatchId,
         sourceFileId: candidate.sourceFileId,
         sourceFormat: candidate.sourceFormat,
@@ -489,6 +494,10 @@ export async function confirmExpenseCandidate(
       }) as WithFieldValue<Expense>;
 
       transaction.create(confirmedExpenseDoc, expenseData);
+      if (movementRef) {
+        transaction.update(movementRef, { expenseId: confirmedExpenseDoc.id, revision: FieldValue.increment(1), reviewedAt: new Date().toISOString(), reviewedBy: access.userId });
+        transaction.create(adminDb.collection(`tenants/${tenantId}/financialAudit`).doc(), { action: "expense-confirm", recordId: movementRef.id, actor: access.userId, at: new Date().toISOString(), before: null, after: { expenseId: confirmedExpenseDoc.id }, reason: input.notes?.trim() || "Existing expense workflow confirmation" });
+      }
       transaction.update(candidateDoc, {
         reviewStatus: "confirmed",
         existingExpenseId: confirmedExpenseDoc.id,
@@ -569,6 +578,7 @@ export async function updateConfirmedExpense(
       }
 
       const expense = expenseSnap.data() as Expense;
+      if (expense.financeMovementId && access.role !== "owner") throw new ExpenseAccountingError("Native financial expenses require the business owner");
       if (
         !categorySnap.exists ||
         (categorySnap.get("active") !== true &&

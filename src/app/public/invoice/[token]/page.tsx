@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getInvoiceByToken, getTenantSettingsForPublicInvoice } from './actions';
-import { Invoice } from '@/types/invoice';
+import { getInvoiceByToken, getTenantSettingsForPublicInvoice, recordInvoiceView } from './actions';
+import type { RecipientInvoice } from '@/types/recipient-document';
 import { formatCurrency, formatDate, formatTaxRate, getStatusLabel, getStatusColor } from '@/lib/invoice-utils';
 import { getBillableUnitLabel } from '@/types/jobItem';
 
 export default function PublicInvoicePage() {
     const params = useParams();
     const token = params.token as string;
-    const [invoice, setInvoice] = useState<Invoice | null>(null);
+    const [invoice, setInvoice] = useState<RecipientInvoice | null>(null);
     const [tenantSettings, setTenantSettings] = useState<{
         businessName?: string;
         abn?: string;
@@ -39,11 +39,11 @@ export default function PublicInvoicePage() {
 
             if (result.success && result.data) {
                 setInvoice(result.data);
+                await recordInvoiceView(token);
 
                 // Fetch tenant settings for branding
-                const settingsResult = await getTenantSettingsForPublicInvoice(result.data.tenantId);
+                const settingsResult = await getTenantSettingsForPublicInvoice(result.data.tenantId, token);
                 if (settingsResult.success) {
-                    console.log('Tenant settings loaded:', settingsResult.data);
                     setTenantSettings(settingsResult.data);
                 } else {
                     console.error('Failed to load tenant settings:', settingsResult);
@@ -288,7 +288,8 @@ export default function PublicInvoicePage() {
                                 <span className="font-bold">Total:</span>
                                 <span className="font-bold text-lg">{formatCurrency(invoice.totalMinor)}</span>
                             </div>
-                            {invoice.amountPaidMinor > 0 && (
+                            {(invoice.creditAppliedMinor||0)>0&&<div className="flex justify-between py-2 text-green-600"><span>Credits Applied:</span><span>-{formatCurrency(invoice.creditAppliedMinor||0)}</span></div>}
+                            {(invoice.amountPaidMinor > 0 || (invoice.creditAppliedMinor||0)>0) && (
                                 <>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-foreground/60">Amount Paid:</span>

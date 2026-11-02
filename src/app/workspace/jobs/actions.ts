@@ -1,5 +1,9 @@
 "use server";
 
+import { requireBusinessAccess } from "@/lib/business/server-access";
+import { BusinessError, businessActionFailure, assertResourceId } from "@/lib/business/errors";
+import { assertBusinessInput, omitUndefinedFields } from "@/lib/business/validation";
+
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import type {
@@ -54,9 +58,12 @@ function sortJobsByCreatedAtDesc(jobs: Job[]): Job[] {
  * Get all jobs for a tenant
  */
 export async function getJobs(
-  tenantId: string
+  tenantId: string,
+  idToken: string
 ): Promise<ActionResult<JobWithClient[]>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+
     const jobsRef = adminDb.collection(`tenants/${tenantId}/jobs`);
     const snapshot = await jobsRef.orderBy("createdAt", "desc").get();
 
@@ -78,6 +85,7 @@ export async function getJobs(
 
     return { success: true, data: jobsWithClients };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching jobs:", error);
     return { success: false, error: "Failed to fetch jobs" };
   }
@@ -88,9 +96,13 @@ export async function getJobs(
  */
 export async function getJobsByClient(
   tenantId: string,
-  clientId: string
+  clientId: string,
+  idToken: string
 ): Promise<ActionResult<Job[]>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+    assertResourceId(clientId, "clientId");
+
     const jobsRef = adminDb.collection(`tenants/${tenantId}/jobs`);
     const snapshot = await jobsRef.where("clientId", "==", clientId).get();
 
@@ -100,6 +112,7 @@ export async function getJobsByClient(
 
     return { success: true, data: jobs };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching jobs by client:", error);
     return { success: false, error: "Failed to fetch jobs for this client" };
   }
@@ -110,9 +123,13 @@ export async function getJobsByClient(
  */
 export async function getJob(
   tenantId: string,
-  jobId: string
+  jobId: string,
+  idToken: string
 ): Promise<ActionResult<Job>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+    assertResourceId(jobId, "jobId");
+
     const jobRef = adminDb.doc(`tenants/${tenantId}/jobs/${jobId}`);
     const jobDoc = await jobRef.get();
 
@@ -124,6 +141,7 @@ export async function getJob(
 
     return { success: true, data: job };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching job:", error);
     return { success: false, error: "Failed to fetch job" };
   }
@@ -135,9 +153,13 @@ export async function getJob(
 export async function createJob(
   tenantId: string,
   userId: string,
-  data: JobFormData
+  data: JobFormData,
+  idToken: string
 ): Promise<ActionResult<string>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare", claimedUserId: userId });
+    assertBusinessInput("job", data);
+
     // Validate that the client exists
     const clientRef = adminDb.doc(
       `tenants/${tenantId}/clients/${data.clientId}`
@@ -160,10 +182,11 @@ export async function createJob(
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    const docRef = await jobsRef.add(jobData);
+    const docRef = await jobsRef.add(omitUndefinedFields(jobData));
 
     return { success: true, data: docRef.id };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error creating job:", error);
     return { success: false, error: "Failed to create job" };
   }
@@ -175,9 +198,14 @@ export async function createJob(
 export async function updateJob(
   tenantId: string,
   jobId: string,
-  data: JobUpdateData
+  data: JobUpdateData,
+  idToken: string
 ): Promise<ActionResult> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare" });
+    assertResourceId(jobId, "jobId");
+    assertBusinessInput("job", data);
+
     const jobRef = adminDb.doc(`tenants/${tenantId}/jobs/${jobId}`);
 
     // Verify job exists
@@ -203,10 +231,11 @@ export async function updateJob(
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    await jobRef.update(updateData);
+    await jobRef.update(omitUndefinedFields(updateData));
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error updating job:", error);
     return { success: false, error: "Failed to update job" };
   }
@@ -217,9 +246,13 @@ export async function updateJob(
  */
 export async function archiveJob(
   tenantId: string,
-  jobId: string
+  jobId: string,
+  idToken: string
 ): Promise<ActionResult> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare" });
+    assertResourceId(jobId, "jobId");
+
     const jobRef = adminDb.doc(`tenants/${tenantId}/jobs/${jobId}`);
 
     await jobRef.update({
@@ -229,6 +262,7 @@ export async function archiveJob(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error archiving job:", error);
     return { success: false, error: "Failed to archive job" };
   }
@@ -239,14 +273,19 @@ export async function archiveJob(
  */
 export async function deleteJob(
   tenantId: string,
-  jobId: string
+  jobId: string,
+  idToken: string
 ): Promise<ActionResult> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.delete" });
+    assertResourceId(jobId, "jobId");
+
     const jobRef = adminDb.doc(`tenants/${tenantId}/jobs/${jobId}`);
     await jobRef.delete();
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error deleting job:", error);
     return { success: false, error: "Failed to delete job" };
   }

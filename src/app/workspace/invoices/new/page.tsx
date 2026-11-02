@@ -1,5 +1,6 @@
 "use client";
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -20,6 +21,7 @@ export default function NewInvoicePage() {
     const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
+    const [errorMessage,setErrorMessage]=useState("");
 
     // Get tenant ID
     useEffect(() => {
@@ -70,18 +72,19 @@ export default function NewInvoicePage() {
         };
 
         setCreating(true);
+        setErrorMessage("");
         try {
-            const result = await createDraftInvoice(tenantId, user.uid, data);
+            const result = await createDraftInvoice(tenantId, user.uid, data, await requireActionIdToken());
 
             if (result.success) {
                 router.push(`/workspace/invoices/${result.data}`);
             } else {
-                alert(result.error);
+                setErrorMessage(result.error);
                 setCreating(false);
             }
         } catch (error) {
             console.error("Error creating invoice:", error);
-            alert("Failed to create invoice");
+            setErrorMessage("Failed to create invoice");
             setCreating(false);
         }
     };
@@ -126,7 +129,8 @@ export default function NewInvoicePage() {
             </div>
 
             <Card className="p-6">
-                <form onSubmit={handleSubmit}>
+                {errorMessage&&<p role="alert" className="mb-4 rounded border p-3">{errorMessage}</p>}
+            <form onSubmit={handleSubmit}>
                     <div className="space-y-6">
                         {/* Client Selection */}
                         <div>

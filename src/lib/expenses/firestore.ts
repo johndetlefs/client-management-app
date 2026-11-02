@@ -1,4 +1,5 @@
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
+import { requireBusinessAccess } from "@/lib/business/server-access";
 import type {
   CollectionReference,
   DocumentReference,
@@ -145,45 +146,11 @@ export async function assertExpenseTenantAccess(
   idToken: string,
 ): Promise<ExpenseTenantAccess> {
   try {
-    assertFirestoreIdSegment("tenantId", tenantId);
+    const access = await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+    return { tenantId: access.tenantId, userId: access.userId, role: access.role };
   } catch (error) {
     throw new ExpenseAccessError(
       error instanceof Error ? error.message : "Invalid expense access input",
     );
   }
-
-  if (!idToken) {
-    throw new ExpenseAccessError("Authentication is required");
-  }
-
-  let userId: string;
-  try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    userId = decodedToken.uid;
-    assertFirestoreIdSegment("userId", userId);
-  } catch {
-    throw new ExpenseAccessError("Authentication is invalid or expired");
-  }
-
-  const tenantUserSnap = await adminDb
-    .collection("tenants")
-    .doc(tenantId)
-    .collection("users")
-    .doc(userId)
-    .get();
-
-  if (!tenantUserSnap.exists) {
-    throw new ExpenseAccessError("User is not a member of this tenant");
-  }
-
-  const role = tenantUserSnap.get("role");
-  if (role !== "owner" && role !== "staff") {
-    throw new ExpenseAccessError("User does not have expense access");
-  }
-
-  return {
-    tenantId,
-    userId,
-    role,
-  };
 }

@@ -1,3 +1,4 @@
+import { syntheticPassword } from "./finance/synthetic-auth";
 /**
  * Test script to verify sequential invoice numbering
  * Run this with: npx tsx scripts/test-invoice-numbering.ts
@@ -9,7 +10,7 @@
  * 4. Verify invoice numbers are sequential and unique
  */
 
-import { adminDb } from "../src/lib/firebase-admin";
+import { adminDb, adminAuth } from "../src/lib/firebase-admin";
 import {
   createDraftInvoice,
   addItemsToInvoice,
@@ -21,6 +22,19 @@ import { createJobItem } from "../src/app/workspace/jobs/itemActions";
 
 const TEST_TENANT_ID = "test-tenant-sequential-numbering";
 const TEST_USER_ID = "test-user-123";
+let testIdToken = "";
+
+async function authenticateTestOwner() {
+  if (process.env.NODE_ENV !== "development" || !process.env.FIREBASE_AUTH_EMULATOR_HOST) throw new Error("This diagnostic requires Firebase emulators");
+  try { await adminAuth.createUser({ uid: TEST_USER_ID, email: "numbering@example.test", password: syntheticPassword() }); } catch (error) {
+    if ((error as { code?: string }).code !== "auth/uid-already-exists") throw error;
+  }
+  const response = await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=synthetic-key`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: "numbering@example.test", password: syntheticPassword(), returnSecureToken: true }) });
+  const result = await response.json();
+  if (!response.ok || !result.idToken) throw new Error("Synthetic authentication failed");
+  testIdToken = result.idToken;
+  await adminDb.doc(`tenants/${TEST_TENANT_ID}/users/${TEST_USER_ID}`).set({ role: "owner" });
+}
 
 async function cleanup() {
   console.log("🧹 Cleaning up old test data...");
@@ -73,7 +87,7 @@ async function setupTestData() {
     abn: "12345678901",
     shortcode: "TEST",
     isActive: true,
-  });
+  }, testIdToken);
 
   if (!clientResult.success) {
     throw new Error(`Failed to create client: ${clientResult.error}`);
@@ -87,7 +101,7 @@ async function setupTestData() {
     clientId,
     title: "Test Job",
     status: "active",
-  });
+  }, testIdToken);
 
   if (!jobResult.success) {
     throw new Error(`Failed to create job: ${jobResult.error}`);
@@ -108,7 +122,7 @@ async function setupTestData() {
       unitPriceMinor: 10000, // $100.00
       gstApplicable: true,
       status: "open",
-    });
+    }, testIdToken);
 
     if (!itemResult.success) {
       throw new Error(`Failed to create item: ${itemResult.error}`);
@@ -127,6 +141,7 @@ async function testSequentialNumbering() {
   console.log("=".repeat(60));
 
   try {
+    await authenticateTestOwner();
     // Cleanup first
     await cleanup();
 
@@ -148,7 +163,7 @@ async function testSequentialNumbering() {
         {
           clientId,
           notes: `Test invoice ${i}`,
-        }
+        }, testIdToken
       );
 
       if (!draftResult.success) {
@@ -162,7 +177,7 @@ async function testSequentialNumbering() {
       const addItemsResult = await addItemsToInvoice(
         TEST_TENANT_ID,
         invoiceId,
-        [itemIds[i - 1]]
+        [itemIds[i - 1]], testIdToken
       );
 
       if (!addItemsResult.success) {
@@ -175,7 +190,7 @@ async function testSequentialNumbering() {
       const issueResult = await issueInvoice(
         TEST_TENANT_ID,
         invoiceId,
-        TEST_USER_ID
+        TEST_USER_ID, testIdToken
       );
 
       if (!issueResult.success) {

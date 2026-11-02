@@ -7,6 +7,7 @@ import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getStorage, type Storage } from "firebase-admin/storage";
+import { assertLiveHasNoEmulatorHosts, firebaseDataMode } from "./firebase-environment";
 
 let adminApp: App;
 let adminAuth: Auth;
@@ -18,7 +19,8 @@ let adminStorage: Storage;
  * Supports both emulator (development) and production environments
  */
 function initializeFirebaseAdmin() {
-  if (process.env.NODE_ENV === "development") {
+  assertLiveHasNoEmulatorHosts(firebaseDataMode, process.env);
+  if (firebaseDataMode === "emulator") {
     process.env.FIREBASE_AUTH_EMULATOR_HOST ||= "localhost:9099";
     process.env.STORAGE_EMULATOR_HOST ||= "http://localhost:9199";
   }
@@ -32,7 +34,7 @@ function initializeFirebaseAdmin() {
   }
 
   // In development, connect to emulators
-  if (process.env.NODE_ENV === "development") {
+  if (firebaseDataMode === "emulator") {
     adminApp = initializeApp({
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-project",
       storageBucket:

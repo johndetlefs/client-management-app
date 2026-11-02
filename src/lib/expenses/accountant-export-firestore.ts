@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase-admin/firestore";
+import { periodBounds, sydneyDate } from "@/lib/finance/period";
 
 import {
   buildAccountantWorkbook,
@@ -43,12 +44,9 @@ export async function generateTenantAccountantExport(
   await assertExpenseTenantAccess(input.tenantId, input.idToken);
 
   const refs = tenantExpenseCollectionRefs(input.tenantId);
-  const startTimestamp = Timestamp.fromDate(
-    new Date(`${input.periodStartDate}T00:00:00.000Z`),
-  );
-  const endTimestamp = Timestamp.fromDate(
-    new Date(`${input.periodEndDate}T23:59:59.999Z`),
-  );
+  const bounds = periodBounds({ start: input.periodStartDate, end: input.periodEndDate, label: "Accountant export" });
+  const startTimestamp = Timestamp.fromDate(bounds.start);
+  const endTimestamp = Timestamp.fromDate(bounds.endExclusive);
 
   const [expenseSnapshot, categorySnapshot, invoiceSnapshot, settingsSnapshot] =
     await Promise.all([
@@ -61,7 +59,7 @@ export async function generateTenantAccountantExport(
       adminDb
         .collection(`tenants/${input.tenantId}/invoices`)
         .where("issueDate", ">=", startTimestamp)
-        .where("issueDate", "<=", endTimestamp)
+        .where("issueDate", "<", endTimestamp)
         .orderBy("issueDate", "asc")
         .get(),
       adminDb.doc(`tenants/${input.tenantId}/settings/business`).get(),
@@ -249,13 +247,13 @@ function isIsoDate(value: string): boolean {
 function toIsoDate(value: FirestoreTimestampLike | undefined): string | null {
   if (!value) return null;
   if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
+    return sydneyDate(value);
   }
   if ("toDate" in value) {
-    return value.toDate().toISOString().slice(0, 10);
+    return sydneyDate(value.toDate());
   }
   if ("seconds" in value) {
-    return new Date(value.seconds * 1000).toISOString().slice(0, 10);
+    return sydneyDate(new Date(value.seconds * 1000));
   }
   return null;
 }

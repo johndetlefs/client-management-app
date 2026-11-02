@@ -1,5 +1,9 @@
 "use server";
 
+import { requireBusinessAccess } from "@/lib/business/server-access";
+import { BusinessError, businessActionFailure, assertResourceId } from "@/lib/business/errors";
+import { assertBusinessInput, assertIdList } from "@/lib/business/validation";
+
 import { adminDb } from "@/lib/firebase-admin";
 import { Invoice, InvoiceFormData, InvoiceCounter } from "@/types/invoice";
 import { JobItem, ItemStatus } from "@/types/jobItem";
@@ -12,10 +16,11 @@ import {
   createInvoiceLineFromJobItem,
   computeInvoiceTotals,
   computeBalanceDue,
-  determineInvoiceStatus,
   formatInvoiceNumber,
 } from "@/lib/invoice-utils";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { assertInvoiceGstSupported, invoiceGstRate } from "@/lib/finance/gst";
+import { sydneyDate } from "@/lib/finance/period";
 
 type ActionResult<T = void> =
   | { success: true; data: T }
@@ -38,8 +43,12 @@ export async function createDraftInvoice(
   tenantId: string,
   userId: string,
   data: InvoiceFormData,
+  idToken: string,
 ): Promise<ActionResult<string>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare", claimedUserId: userId });
+    assertBusinessInput("invoiceDraft", data);
+
     // Fetch client data
     const clientRef = adminDb
       .collection(`tenants/${tenantId}/clients`)
@@ -99,6 +108,7 @@ export async function createDraftInvoice(
 
     return { success: true, data: invoiceRef.id };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error creating draft invoice:", error);
     return {
       success: false,
@@ -114,8 +124,12 @@ export async function createDraftInvoice(
 export async function getOpenJobItemsForClient(
   tenantId: string,
   clientId: string,
+  idToken: string,
 ): Promise<ActionResult<Array<JobItem & { jobTitle: string }>>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+    assertResourceId(clientId, "clientId");
+
     const itemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
     const itemsSnap = await itemsRef
       .where("clientId", "==", clientId)
@@ -125,35 +139,12 @@ export async function getOpenJobItemsForClient(
     // Fetch job titles
     const jobIds = new Set<string>();
     const items: JobItem[] = [];
-    const itemsToCleanup: string[] = [];
 
     itemsSnap.forEach((doc) => {
       const item = { id: doc.id, ...doc.data() } as JobItem;
-      // If an item is "open" but has a lock, it's stale data - mark for cleanup
-      if (item.lock) {
-        itemsToCleanup.push(item.id);
-      }
       items.push(item);
       jobIds.add(item.jobId);
     });
-
-    // Clean up any stale locks (open items shouldn't have locks)
-    if (itemsToCleanup.length > 0) {
-      const batch = adminDb.batch();
-      itemsToCleanup.forEach((itemId) => {
-        const itemRef = adminDb
-          .collection(`tenants/${tenantId}/jobItems`)
-          .doc(itemId);
-        batch.update(itemRef, {
-          lock: FieldValue.delete(),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-      });
-      await batch.commit();
-      console.log(
-        `[getOpenJobItemsForClient] Cleaned up ${itemsToCleanup.length} stale locks`,
-      );
-    }
 
     // Fetch jobs to get titles
     const jobTitles = new Map<string, string>();
@@ -196,6 +187,7 @@ export async function getOpenJobItemsForClient(
 
     return { success: true, data: itemsWithJobTitles };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching open job items:", error);
     return {
       success: false,
@@ -212,8 +204,13 @@ export async function addItemsToInvoice(
   tenantId: string,
   invoiceId: string,
   jobItemIds: string[],
+  idToken: string,
 ): Promise<ActionResult<void>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare" });
+    assertResourceId(invoiceId, "invoiceId");
+    assertIdList(jobItemIds, "jobItemIds");
+
     await adminDb.runTransaction(async (transaction) => {
       const invoiceRef = adminDb
         .collection(`tenants/${tenantId}/invoices`)
@@ -236,7 +233,7 @@ export async function addItemsToInvoice(
       const settings = settingsSnap.exists
         ? (settingsSnap.data() as TenantSettings)
         : null;
-      const taxRate = settings?.tax?.defaultRate || 0;
+      const taxRate = invoiceGstRate(settings, sydneyDate());
 
       // Fetch and validate job items
       const itemRefs = jobItemIds.map((id) =>
@@ -255,13 +252,6 @@ export async function addItemsToInvoice(
         }
 
         const item = { id: itemSnap.id, ...itemSnap.data() } as JobItem;
-
-        // Debug logging
-        console.log(`[addItemsToInvoice] Validating item "${item.title}":`, {
-          status: item.status,
-          hasLock: !!item.lock,
-          lock: item.lock,
-        });
 
         // Validate item is open and not locked
         if (item.status !== "open") {
@@ -344,6 +334,7 @@ export async function addItemsToInvoice(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error adding items to invoice:", error);
     return {
       success: false,
@@ -362,8 +353,13 @@ export async function removeItemFromInvoice(
   tenantId: string,
   invoiceId: string,
   jobItemId: string,
+  idToken: string,
 ): Promise<ActionResult<void>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare" });
+    assertResourceId(invoiceId, "invoiceId");
+    assertResourceId(jobItemId, "jobItemId");
+
     await adminDb.runTransaction(async (transaction) => {
       const invoiceRef = adminDb
         .collection(`tenants/${tenantId}/invoices`)
@@ -386,7 +382,7 @@ export async function removeItemFromInvoice(
       const settings = settingsSnap.exists
         ? (settingsSnap.data() as TenantSettings)
         : null;
-      const taxRate = settings?.tax?.defaultRate || 0;
+      const taxRate = invoiceGstRate(settings, sydneyDate());
 
       // Remove line from invoice
       const updatedLines = invoice.lines.filter(
@@ -430,6 +426,7 @@ export async function removeItemFromInvoice(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error removing item from invoice:", error);
     return {
       success: false,
@@ -485,8 +482,12 @@ export async function issueInvoice(
   tenantId: string,
   invoiceId: string,
   userId: string,
+  idToken: string,
 ): Promise<ActionResult<void>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "documents.issue", claimedUserId: userId });
+    assertResourceId(invoiceId, "invoiceId");
+
     await adminDb.runTransaction(async (transaction) => {
       const invoiceRef = adminDb
         .collection(`tenants/${tenantId}/invoices`)
@@ -506,6 +507,9 @@ export async function issueInvoice(
       if (invoice.lines.length === 0) {
         throw new Error("Cannot issue an invoice with no line items");
       }
+
+      const gstSettings = await transaction.get(adminDb.doc(`tenants/${tenantId}/settings/business`));
+      assertInvoiceGstSupported(invoice.taxMinor, gstSettings.data() as TenantSettings | undefined, sydneyDate());
 
       // Get client to check for shortcode
       const clientRef = adminDb
@@ -569,6 +573,7 @@ export async function issueInvoice(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error issuing invoice:", error);
     return {
       success: false,
@@ -580,65 +585,20 @@ export async function issueInvoice(
 /**
  * Update payment amount on an invoice
  */
+/** @deprecated Undated cumulative edits would invalidate receipt-period reporting. */
 export async function updateInvoicePayment(
   tenantId: string,
   invoiceId: string,
   amountPaidMinor: number,
+  idToken: string,
 ): Promise<ActionResult<void>> {
   try {
-    const invoiceRef = adminDb
-      .collection(`tenants/${tenantId}/invoices`)
-      .doc(invoiceId);
-    const invoiceSnap = await invoiceRef.get();
-
-    if (!invoiceSnap.exists) {
-      return { success: false, error: "Invoice not found" };
-    }
-
-    const invoice = { id: invoiceSnap.id, ...invoiceSnap.data() } as Invoice;
-
-    if (invoice.status === "draft" || invoice.status === "void") {
-      return {
-        success: false,
-        error: "Cannot update payment for draft or void invoices",
-      };
-    }
-
-    if (amountPaidMinor < 0 || amountPaidMinor > invoice.totalMinor) {
-      return {
-        success: false,
-        error: "Invalid payment amount",
-      };
-    }
-
-    const balanceDueMinor = computeBalanceDue(
-      invoice.totalMinor,
-      amountPaidMinor,
-    );
-    const dueDate = timestampToDate(invoice.dueDate);
-
-    const newStatus = determineInvoiceStatus(
-      invoice.status,
-      invoice.totalMinor,
-      amountPaidMinor,
-      dueDate,
-    );
-
-    await invoiceRef.update({
-      amountPaidMinor,
-      balanceDueMinor,
-      status: newStatus,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    return { success: true, data: undefined };
+    await requireBusinessAccess({ tenantId, idToken, capability: "payments.record" });
+    assertResourceId(invoiceId, "invoiceId");
+    if (!Number.isSafeInteger(amountPaidMinor) || amountPaidMinor < 0) throw new BusinessError("VALIDATION_ERROR", "Payment amount must be non-negative integer minor units");
+    return { success: false, error: "Record a dated receipt in Finances. Undated cumulative payment edits cannot establish accurate reporting periods." };
   } catch (error) {
-    console.error("Error updating invoice payment:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to update payment",
-    };
+    return businessActionFailure(error, "Payment update denied");
   }
 }
 
@@ -663,12 +623,14 @@ export async function markInvoiceViewed(
 
     const invoiceDoc = querySnap.docs[0];
     const invoice = { id: invoiceDoc.id, ...invoiceDoc.data() } as Invoice;
+    if (invoiceDoc.id !== invoiceId || invoice.status === "draft") {
+      return { success: false, error: "Document not available" };
+    }
 
     // Only update if not already viewed (just timestamp, don't change status)
     if (!invoice.viewedAt) {
       await invoiceDoc.ref.update({
         viewedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
       });
     }
 
@@ -692,11 +654,12 @@ export async function voidInvoice(
   tenantId: string,
   invoiceId: string,
   userRole: string,
+  idToken: string,
 ): Promise<ActionResult<void>> {
   try {
-    if (userRole !== "owner") {
-      return { success: false, error: "Only owners can void invoices" };
-    }
+    await requireBusinessAccess({ tenantId, idToken, capability: "documents.cancel" });
+    assertResourceId(invoiceId, "invoiceId");
+
 
     await adminDb.runTransaction(async (transaction) => {
       const invoiceRef = adminDb
@@ -710,6 +673,8 @@ export async function voidInvoice(
 
       const invoice = { id: invoiceSnap.id, ...invoiceSnap.data() } as Invoice;
 
+      if (invoice.creditAppliedMinor || invoice.creditNoteIssuedMinor) throw new Error("This invoice has credit history and cannot be voided independently.");
+      if (invoice.creditedBy || invoice.correctionId) throw new Error("Linked correction documents cannot be voided independently; preserve the correction chain");
       if (invoice.status === "void") {
         throw new Error("Invoice is already void");
       }
@@ -730,11 +695,6 @@ export async function voidInvoice(
         status: "void",
         updatedAt: FieldValue.serverTimestamp(),
       });
-
-      // Unlock all locked job items, regardless of invoice status
-      console.log(
-        `[voidInvoice] Unlocking ${invoice.lockedJobItemIds.length} items`,
-      );
       for (let index = 0; index < invoice.lockedJobItemIds.length; index += 1) {
         const jobItemId = invoice.lockedJobItemIds[index];
         const itemRef = itemRefs[index];
@@ -742,7 +702,6 @@ export async function voidInvoice(
 
         // Only update if item exists
         if (itemSnap.exists) {
-          console.log(`[voidInvoice] Unlocking item ${jobItemId}`);
           transaction.update(itemRef, {
             status: "open" as ItemStatus,
             lock: FieldValue.delete(),
@@ -756,6 +715,7 @@ export async function voidInvoice(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error voiding invoice:", error);
     return {
       success: false,
@@ -770,8 +730,12 @@ export async function voidInvoice(
 export async function deleteDraftInvoice(
   tenantId: string,
   invoiceId: string,
+  idToken: string,
 ): Promise<ActionResult<void>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.delete" });
+    assertResourceId(invoiceId, "invoiceId");
+
     await adminDb.runTransaction(async (transaction) => {
       const invoiceRef = adminDb
         .collection(`tenants/${tenantId}/invoices`)
@@ -816,6 +780,7 @@ export async function deleteDraftInvoice(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error deleting draft invoice:", error);
     return {
       success: false,

@@ -1,8 +1,10 @@
 "use server";
 
+import { assertRecipientDocumentAccess, assertRecipientToken, recipientStatusAllowed, recordRecipientView } from "@/lib/business/public-access";
+
 import { adminDb } from "@/lib/firebase-admin";
-import { Invoice } from "@/types/invoice";
-import { FieldValue } from "firebase-admin/firestore";
+import type { RecipientInvoice } from "@/types/recipient-document";
+import { recipientLines } from "@/lib/business/recipient-projection";
 
 type ActionResult<T = void> =
   | { success: true; data: T }
@@ -20,12 +22,13 @@ function timestampToDate(timestamp: unknown): Date | undefined {
 
 /**
  * Get invoice by public token (no authentication required)
- * Also marks the invoice as viewed if it hasn't been viewed yet
+ * Retrieval is read-only; the recipient page records an explicit view separately.
  */
 export async function getInvoiceByToken(
   token: string
-): Promise<ActionResult<Invoice>> {
+): Promise<ActionResult<RecipientInvoice>> {
   try {
+    assertRecipientToken(token);
     // Query all invoices by public token using collection group
     const invoicesRef = adminDb.collectionGroup("invoices");
     const querySnap = await invoicesRef
@@ -39,60 +42,40 @@ export async function getInvoiceByToken(
 
     const invoiceDoc = querySnap.docs[0];
     const invoiceData = invoiceDoc.data();
+    if (!recipientStatusAllowed(invoiceData.status, "invoices")) return { success: false, error: "Document not available" };
+    if (invoiceData.creditedBy) return { success: false, error: "This invoice has been credited and replaced. Please refer to the replacement invoice supplied by the business." };
 
     // Normalize legacy "viewed" status to "sent" for backwards compatibility
     const normalizedStatus =
       invoiceData.status === "viewed" ? "sent" : invoiceData.status;
 
     // Convert Firestore Timestamps to Dates for serialization
-    const invoice: Invoice = {
+    const invoice: RecipientInvoice = {
       id: invoiceDoc.id,
       tenantId: invoiceData.tenantId,
-      clientId: invoiceData.clientId,
       invoiceNumber: invoiceData.invoiceNumber,
       invoiceDisplayNumber: invoiceData.invoiceDisplayNumber,
       status: normalizedStatus,
       issueDate: timestampToDate(invoiceData.issueDate),
       dueDate: timestampToDate(invoiceData.dueDate),
       viewedAt: timestampToDate(invoiceData.viewedAt),
-      lines: invoiceData.lines || [],
-      lockedJobItemIds: invoiceData.lockedJobItemIds || [],
+      lines: recipientLines(invoiceData.lines),
       subtotalMinor: invoiceData.subtotalMinor || 0,
       taxMinor: invoiceData.taxMinor || 0,
       totalMinor: invoiceData.totalMinor || 0,
       taxBreakdown: invoiceData.taxBreakdown || [],
       amountPaidMinor: invoiceData.amountPaidMinor || 0,
+      creditAppliedMinor: invoiceData.creditAppliedMinor || 0,
       balanceDueMinor: invoiceData.balanceDueMinor || 0,
       clientName: invoiceData.clientName,
       clientEmail: invoiceData.clientEmail,
       clientAbn: invoiceData.clientAbn,
       clientAddress: invoiceData.clientAddress,
-      publicToken: invoiceData.publicToken,
       notes: invoiceData.notes,
       paymentInstructions: invoiceData.paymentInstructions,
       createdAt: timestampToDate(invoiceData.createdAt) || new Date(),
       updatedAt: timestampToDate(invoiceData.updatedAt) || new Date(),
-      createdBy: invoiceData.createdBy,
-      issuedBy: invoiceData.issuedBy,
     };
-
-    // Mark as viewed if not already viewed (just timestamp, don't change status)
-    // Also migrate legacy "viewed" status to "sent" if needed
-    const updates: Record<string, unknown> = {};
-
-    if (!invoice.viewedAt) {
-      updates.viewedAt = FieldValue.serverTimestamp();
-      invoice.viewedAt = new Date();
-    }
-
-    if (invoiceData.status === "viewed") {
-      updates.status = "sent";
-    }
-
-    if (Object.keys(updates).length > 0) {
-      updates.updatedAt = FieldValue.serverTimestamp();
-      await invoiceDoc.ref.update(updates);
-    }
 
     return { success: true, data: invoice };
   } catch (error) {
@@ -123,7 +106,8 @@ export async function getInvoiceByToken(
  * (read-only, no authentication required for public invoices)
  */
 export async function getTenantSettingsForPublicInvoice(
-  tenantId: string
+  tenantId: string,
+  token: string
 ): Promise<
   ActionResult<{
     businessName?: string;
@@ -143,6 +127,7 @@ export async function getTenantSettingsForPublicInvoice(
   }>
 > {
   try {
+    await assertRecipientDocumentAccess(tenantId, token, "invoices");
     // Settings are stored in a subcollection: tenants/{tenantId}/settings/business
     const businessRef = adminDb.doc(`tenants/${tenantId}/settings/business`);
     const businessSnap = await businessRef.get();
@@ -177,5 +162,14 @@ export async function getTenantSettingsForPublicInvoice(
           ? error.message
           : "Failed to fetch company information",
     };
+  }
+}
+
+export async function recordInvoiceView(token: string): Promise<ActionResult> {
+  try {
+    await recordRecipientView(token, "invoices");
+    return { success: true, data: undefined };
+  } catch {
+    return { success: false, error: "Document access denied" };
   }
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -40,7 +41,7 @@ export default function ClientsPage() {
             setLoading(true);
             setError(null);
 
-            const result = await getClients(tenantId);
+            const result = await getClients(tenantId, await requireActionIdToken());
             if (result.success) {
                 setClients(result.data);
             } else {
@@ -57,7 +58,7 @@ export default function ClientsPage() {
             return;
         }
 
-        const result = await deleteClient(tenantId, clientId);
+        const result = await deleteClient(tenantId, clientId, await requireActionIdToken());
         if (result.success) {
             // Trigger a refresh by incrementing the counter
             setRefreshTrigger(prev => prev + 1);

@@ -1,83 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { initializeVerifiedAccount } from "@/lib/business/initialize-account";
+import { BusinessError } from "@/lib/business/errors";
 
-export const runtime = "nodejs"; // Required for Firestore
+export const runtime = "nodejs";
 
-/**
- * API route to initialize a new user's profile and tenant after signup
- * Called immediately after Firebase Auth account creation
- */
+/** Only the verified new user may initialize their own business. */
 export async function POST(request: NextRequest) {
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Authentication is required", code: "AUTH_REQUIRED" }, { status: 401 });
+  }
   try {
-    const { userId, email } = await request.json();
-
-    if (!userId || !email) {
-      console.error("Initialize user failed: Missing userId or email");
-      return NextResponse.json(
-        { error: "Missing userId or email" },
-        { status: 400 }
-      );
+    const body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        Object.keys(body).some((key) => !["userId", "email"].includes(key))) {
+      throw new BusinessError("VALIDATION_ERROR", "Invalid signup input");
     }
-
-    console.log(`Initializing user ${userId} with email ${email}`);
-
-    // Generate a new tenant ID (using the user ID ensures uniqueness for first user)
-    const tenantId = `tenant_${userId}`;
-    const now = new Date();
-
-    // Use a batch write to ensure all documents are created together
-    const batch = adminDb.batch();
-
-    // 1. Create user profile document
-    const userRef = adminDb.collection("users").doc(userId);
-    batch.set(userRef, {
-      uid: userId,
-      email,
-      tenantId,
-      createdAt: now,
-    });
-
-    // 2. Create tenant document
-    const tenantRef = adminDb.collection("tenants").doc(tenantId);
-    batch.set(tenantRef, {
-      id: tenantId,
-      name: email.split("@")[0] + "'s Business", // Default tenant name
-      createdAt: now,
-      createdBy: userId,
-    });
-
-    // 3. Create tenant user document (owner role)
-    const tenantUserRef = adminDb
-      .collection("tenants")
-      .doc(tenantId)
-      .collection("users")
-      .doc(userId);
-    batch.set(tenantUserRef, {
-      uid: userId,
-      email,
-      role: "owner",
-      displayName: email.split("@")[0],
-      joinedAt: now,
-    });
-
-    // Commit all writes together
-    await batch.commit();
-
-    console.log(
-      `Successfully initialized user ${userId} with tenant ${tenantId}`
-    );
-
+    await initializeVerifiedAccount(body.userId, body.email, authorization.slice(7));
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error initializing new user:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to initialize user profile",
-      },
-      { status: 500 }
-    );
+    const known = error instanceof BusinessError;
+    const status = known && error.code === "AUTH_REQUIRED" ? 401 : known && error.code === "ACCESS_DENIED" ? 403 : 400;
+    return NextResponse.json({ error: known ? error.message : "Unable to initialize account", code: known ? error.code : "VALIDATION_ERROR" }, { status });
   }
 }

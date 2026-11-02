@@ -1,5 +1,6 @@
 'use client';
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -57,7 +58,7 @@ export default function ClientEditPage() {
                 return;
             }
 
-            const result = await getClient(tenantId, clientId);
+            const result = await getClient(tenantId, clientId, await requireActionIdToken());
             if (result.success) {
                 const client = result.data;
                 setName(client.name);
@@ -126,9 +127,9 @@ export default function ClientEditPage() {
 
         let result;
         if (isNewClient) {
-            result = await createClient(tenantId, user.uid, formData);
+            result = await createClient(tenantId, user.uid, formData, await requireActionIdToken());
         } else {
-            result = await updateClient(tenantId, clientId, formData);
+            result = await updateClient(tenantId, clientId, formData, await requireActionIdToken());
         }
 
         if (result.success) {

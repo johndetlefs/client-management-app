@@ -1,5 +1,6 @@
 "use client";
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -77,7 +78,7 @@ export default function QuoteDetailPage() {
                 setTaxLabel("Tax");
             }
 
-            const result = await getQuoteForEdit(resolvedTenantId, user.uid, quoteId);
+            const result = await getQuoteForEdit(resolvedTenantId, user.uid, quoteId, await requireActionIdToken());
             if (!result.success) {
                 setError(result.error);
                 setLoading(false);
@@ -121,7 +122,7 @@ export default function QuoteDetailPage() {
             const result = await updateQuoteDetails(tenantId, user.uid, quote.id, {
                 quoteDisplayNumber,
                 notes,
-            });
+            }, await requireActionIdToken());
 
             if (!result.success) {
                 setError(result.error);
@@ -162,7 +163,7 @@ export default function QuoteDetailPage() {
         setError(null);
 
         try {
-            const result = await updateQuoteStatus(tenantId, user.uid, quote.id, nextStatus);
+            const result = await updateQuoteStatus(tenantId, user.uid, quote.id, nextStatus, await requireActionIdToken());
             if (!result.success) {
                 setError(result.error);
                 return;
@@ -190,7 +191,7 @@ export default function QuoteDetailPage() {
         setError(null);
 
         try {
-            const result = await regenerateQuotePublicToken(tenantId, user.uid, quote.id);
+            const result = await regenerateQuotePublicToken(tenantId, user.uid, quote.id, await requireActionIdToken());
             if (!result.success) {
                 setError(result.error);
                 return;

@@ -1,5 +1,9 @@
 "use server";
 
+import { requireBusinessAccess } from "@/lib/business/server-access";
+import { BusinessError, businessActionFailure, assertResourceId } from "@/lib/business/errors";
+import { assertBusinessInput, omitUndefinedFields } from "@/lib/business/validation";
+
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import type { Client, ClientFormData, ClientUpdateData } from "@/types/client";
@@ -34,9 +38,12 @@ function docToClient(
  * Get all clients for a tenant
  */
 export async function getClients(
-  tenantId: string
+  tenantId: string,
+  idToken: string
 ): Promise<ActionResult<Client[]>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+
     const clientsRef = adminDb.collection(`tenants/${tenantId}/clients`);
     const snapshot = await clientsRef.orderBy("name", "asc").get();
 
@@ -44,6 +51,7 @@ export async function getClients(
 
     return { success: true, data: clients };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching clients:", error);
     return { success: false, error: "Failed to fetch clients" };
   }
@@ -54,9 +62,13 @@ export async function getClients(
  */
 export async function getClient(
   tenantId: string,
-  clientId: string
+  clientId: string,
+  idToken: string
 ): Promise<ActionResult<Client>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+    assertResourceId(clientId, "clientId");
+
     const clientRef = adminDb.doc(`tenants/${tenantId}/clients/${clientId}`);
     const clientDoc = await clientRef.get();
 
@@ -68,6 +80,7 @@ export async function getClient(
 
     return { success: true, data: client };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching client:", error);
     return { success: false, error: "Failed to fetch client" };
   }
@@ -79,9 +92,13 @@ export async function getClient(
 export async function createClient(
   tenantId: string,
   userId: string,
-  data: ClientFormData
+  data: ClientFormData,
+  idToken: string
 ): Promise<ActionResult<string>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare", claimedUserId: userId });
+    assertBusinessInput("client", data);
+
     // Validate shortcode if provided
     if (data.shortcode) {
       const { validateShortcode } = await import("@/lib/invoice-utils");
@@ -118,10 +135,11 @@ export async function createClient(
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    const docRef = await clientsRef.add(newClient);
+    const docRef = await clientsRef.add(omitUndefinedFields(newClient));
 
     return { success: true, data: docRef.id };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error creating client:", error);
     return { success: false, error: "Failed to create client" };
   }
@@ -133,9 +151,14 @@ export async function createClient(
 export async function updateClient(
   tenantId: string,
   clientId: string,
-  data: ClientUpdateData
+  data: ClientUpdateData,
+  idToken: string
 ): Promise<ActionResult> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare" });
+    assertResourceId(clientId, "clientId");
+    assertBusinessInput("client", data);
+
     // Validate shortcode if being updated
     if (data.shortcode !== undefined) {
       if (data.shortcode) {
@@ -171,10 +194,14 @@ export async function updateClient(
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    await clientRef.update(updateData);
+    await clientRef.update(omitUndefinedFields({
+      ...updateData,
+      ...(Object.hasOwn(data, "shortcode") && !data.shortcode ? { shortcode: FieldValue.delete() } : {}),
+    }));
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error updating client:", error);
     return { success: false, error: "Failed to update client" };
   }
@@ -185,14 +212,19 @@ export async function updateClient(
  */
 export async function deleteClient(
   tenantId: string,
-  clientId: string
+  clientId: string,
+  idToken: string
 ): Promise<ActionResult> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.delete" });
+    assertResourceId(clientId, "clientId");
+
     const clientRef = adminDb.doc(`tenants/${tenantId}/clients/${clientId}`);
     await clientRef.delete();
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error deleting client:", error);
     return { success: false, error: "Failed to delete client" };
   }
@@ -203,9 +235,12 @@ export async function deleteClient(
  */
 export async function searchClients(
   tenantId: string,
-  searchTerm: string
+  searchTerm: string,
+  idToken: string
 ): Promise<ActionResult<Client[]>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+
     const clientsRef = adminDb.collection(`tenants/${tenantId}/clients`);
     const snapshot = await clientsRef.get();
 
@@ -220,6 +255,7 @@ export async function searchClients(
 
     return { success: true, data: clients };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error searching clients:", error);
     return { success: false, error: "Failed to search clients" };
   }

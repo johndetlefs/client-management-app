@@ -1,8 +1,10 @@
 "use server";
 
+import { assertRecipientDocumentAccess, assertRecipientToken, recipientStatusAllowed, recordRecipientView } from "@/lib/business/public-access";
+
 import { adminDb } from "@/lib/firebase-admin";
-import { Quote } from "@/types/quote";
-import { FieldValue } from "firebase-admin/firestore";
+import type { RecipientQuote } from "@/types/recipient-document";
+import { recipientLines } from "@/lib/business/recipient-projection";
 
 type ActionResult<T = void> =
   | { success: true; data: T }
@@ -19,8 +21,9 @@ function timestampToDate(timestamp: unknown): Date | undefined {
 
 export async function getQuoteByToken(
   token: string,
-): Promise<ActionResult<Quote>> {
+): Promise<ActionResult<RecipientQuote>> {
   try {
+    assertRecipientToken(token);
     const quotesRef = adminDb.collectionGroup("quotes");
     const querySnap = await quotesRef
       .where("publicToken", "==", token)
@@ -33,17 +36,15 @@ export async function getQuoteByToken(
 
     const quoteDoc = querySnap.docs[0];
     const quoteData = quoteDoc.data();
+    if (!recipientStatusAllowed(quoteData.status, "quotes")) return { success: false, error: "Document not available" };
 
-    const quote: Quote = {
+    const quote: RecipientQuote = {
       id: quoteDoc.id,
       tenantId: quoteData.tenantId,
-      clientId: quoteData.clientId,
-      jobId: quoteData.jobId,
       quoteNumber: quoteData.quoteNumber,
       quoteDisplayNumber: quoteData.quoteDisplayNumber,
       status: quoteData.status,
-      lines: quoteData.lines || [],
-      selectedJobItemIds: quoteData.selectedJobItemIds || [],
+      lines: recipientLines(quoteData.lines),
       subtotalMinor: quoteData.subtotalMinor || 0,
       taxMinor: quoteData.taxMinor || 0,
       clientName: quoteData.clientName,
@@ -52,18 +53,9 @@ export async function getQuoteByToken(
       totalMinor: quoteData.totalMinor || 0,
       acceptedAt: timestampToDate(quoteData.acceptedAt),
       viewedAt: timestampToDate(quoteData.viewedAt),
-      publicToken: quoteData.publicToken,
       createdAt: timestampToDate(quoteData.createdAt) || new Date(),
       updatedAt: timestampToDate(quoteData.updatedAt) || new Date(),
     };
-
-    if (!quote.viewedAt) {
-      await quoteDoc.ref.update({
-        viewedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-      quote.viewedAt = new Date();
-    }
 
     return { success: true, data: quote };
   } catch (error) {
@@ -90,6 +82,7 @@ export async function getQuoteByToken(
 
 export async function getTenantSettingsForPublicQuote(
   tenantId: string,
+  token: string,
 ): Promise<
   ActionResult<{
     businessName?: string;
@@ -104,6 +97,7 @@ export async function getTenantSettingsForPublicQuote(
   }>
 > {
   try {
+    await assertRecipientDocumentAccess(tenantId, token, "quotes");
     const businessRef = adminDb.doc(`tenants/${tenantId}/settings/business`);
     const businessSnap = await businessRef.get();
 
@@ -136,5 +130,14 @@ export async function getTenantSettingsForPublicQuote(
           ? error.message
           : "Failed to fetch company information",
     };
+  }
+}
+
+export async function recordQuoteView(token: string): Promise<ActionResult> {
+  try {
+    await recordRecipientView(token, "quotes");
+    return { success: true, data: undefined };
+  } catch {
+    return { success: false, error: "Document access denied" };
   }
 }

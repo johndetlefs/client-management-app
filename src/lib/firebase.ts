@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { firebaseDataMode } from "./firebase-environment";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -22,7 +23,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Connect to emulators in development (both client and server)
-if (process.env.NODE_ENV === "development") {
+if (firebaseDataMode === "emulator") {
   // Only try to connect if we haven't already
   const isServer = typeof window === "undefined";
 

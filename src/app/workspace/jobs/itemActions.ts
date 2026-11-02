@@ -1,5 +1,9 @@
 "use server";
 
+import { requireBusinessAccess } from "@/lib/business/server-access";
+import { BusinessError, businessActionFailure, assertResourceId } from "@/lib/business/errors";
+import { assertBusinessInput } from "@/lib/business/validation";
+
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import type {
@@ -47,25 +51,20 @@ function docToJobItem(
 export async function getJobItems(
   tenantId: string,
   jobId: string,
+  idToken: string,
 ): Promise<ActionResult<JobItem[]>> {
   try {
-    console.log(
-      "[getJobItems] Starting - tenantId:",
-      tenantId,
-      "jobId:",
-      jobId,
-    );
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+    assertResourceId(jobId, "jobId");
     const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
     const snapshot = await jobItemsRef.where("jobId", "==", jobId).get();
-    console.log("[getJobItems] Docs fetched, count:", snapshot.docs.length);
 
     const jobItems: JobItem[] = sortJobItems(
       snapshot.docs.map((doc) => docToJobItem(doc)),
     );
-
-    console.log("[getJobItems] Success - returning", jobItems.length, "items");
     return { success: true, data: jobItems };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching job items:", error);
 
     // Check if it's an index error
@@ -91,8 +90,12 @@ export async function getJobItems(
 export async function getOpenJobItemsByClient(
   tenantId: string,
   clientId: string,
+  idToken: string,
 ): Promise<ActionResult<JobItem[]>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+    assertResourceId(clientId, "clientId");
+
     const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
     const snapshot = await jobItemsRef
       .where("clientId", "==", clientId)
@@ -105,6 +108,7 @@ export async function getOpenJobItemsByClient(
 
     return { success: true, data: jobItems };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching open job items:", error);
 
     // Check if it's an index error
@@ -132,8 +136,12 @@ export async function getOpenJobItemsByClient(
 export async function getJobItem(
   tenantId: string,
   jobItemId: string,
+  idToken: string,
 ): Promise<ActionResult<JobItem>> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read" });
+    assertResourceId(jobItemId, "jobItemId");
+
     const jobItemRef = adminDb.doc(`tenants/${tenantId}/jobItems/${jobItemId}`);
     const jobItemDoc = await jobItemRef.get();
 
@@ -145,6 +153,7 @@ export async function getJobItem(
 
     return { success: true, data: jobItem };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching job item:", error);
     return { success: false, error: "Failed to fetch job item" };
   }
@@ -157,15 +166,11 @@ export async function createJobItem(
   tenantId: string,
   userId: string,
   data: JobItemFormData,
+  idToken: string,
 ): Promise<ActionResult<string>> {
   try {
-    console.log(
-      "[createJobItem] Starting - tenantId:",
-      tenantId,
-      "userId:",
-      userId,
-    );
-    console.log("[createJobItem] Data:", JSON.stringify(data, null, 2));
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare", claimedUserId: userId });
+    assertBusinessInput("item", data);
 
     // Validate that the job exists
     const jobRef = adminDb.doc(`tenants/${tenantId}/jobs/${data.jobId}`);
@@ -226,13 +231,11 @@ export async function createJobItem(
     if (data.description !== undefined && data.description !== "") {
       cleanData.description = data.description;
     }
-
-    console.log("[createJobItem] About to add document...");
     const docRef = await jobItemsRef.add(cleanData);
-    console.log("[createJobItem] Success - docId:", docRef.id);
 
     return { success: true, data: docRef.id };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error creating job item:", error);
     return { success: false, error: "Failed to create job item" };
   }
@@ -245,8 +248,13 @@ export async function updateJobItem(
   tenantId: string,
   jobItemId: string,
   data: JobItemUpdateData,
+  idToken: string,
 ): Promise<ActionResult> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare" });
+    assertResourceId(jobItemId, "jobItemId");
+    assertBusinessInput("item", data);
+
     const jobItemRef = adminDb.doc(`tenants/${tenantId}/jobItems/${jobItemId}`);
 
     // Verify job item exists
@@ -299,6 +307,7 @@ export async function updateJobItem(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error updating job item:", error);
     return { success: false, error: "Failed to update job item" };
   }
@@ -310,8 +319,12 @@ export async function updateJobItem(
 export async function deleteJobItem(
   tenantId: string,
   jobItemId: string,
+  idToken: string,
 ): Promise<ActionResult> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.delete" });
+    assertResourceId(jobItemId, "jobItemId");
+
     const jobItemRef = adminDb.doc(`tenants/${tenantId}/jobItems/${jobItemId}`);
 
     // Verify job item exists
@@ -334,6 +347,7 @@ export async function deleteJobItem(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error deleting job item:", error);
     return { success: false, error: "Failed to delete job item" };
   }
@@ -344,8 +358,14 @@ export async function moveJobItemOrder(
   jobId: string,
   jobItemId: string,
   direction: "up" | "down",
+  idToken: string,
 ): Promise<ActionResult> {
   try {
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare" });
+    assertResourceId(jobId, "jobId");
+    assertResourceId(jobItemId, "jobItemId");
+    if (direction !== "up" && direction !== "down") throw new BusinessError("VALIDATION_ERROR", "Invalid reorder direction");
+
     const jobItemsRef = adminDb.collection(`tenants/${tenantId}/jobItems`);
     const snapshot = await jobItemsRef.where("jobId", "==", jobId).get();
 
@@ -390,6 +410,7 @@ export async function moveJobItemOrder(
 
     return { success: true, data: undefined };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error moving job item order:", error);
     return {
       success: false,

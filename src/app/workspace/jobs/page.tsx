@@ -1,5 +1,6 @@
 'use client';
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -63,7 +64,7 @@ export default function JobsPage() {
                 return;
             }
 
-            const result = await getJobs(tenantId);
+            const result = await getJobs(tenantId, await requireActionIdToken());
             if (result.success) {
                 setJobs(result.data);
             } else {
@@ -86,7 +87,7 @@ export default function JobsPage() {
             return;
         }
 
-        const result = await deleteJob(tenantId, jobId);
+        const result = await deleteJob(tenantId, jobId, await requireActionIdToken());
         if (result.success) {
             setRefreshTrigger(prev => prev + 1);
         } else {
@@ -105,7 +106,7 @@ export default function JobsPage() {
             return;
         }
 
-        const result = await archiveJob(tenantId, jobId);
+        const result = await archiveJob(tenantId, jobId, await requireActionIdToken());
         if (result.success) {
             setRefreshTrigger(prev => prev + 1);
         } else {

@@ -14,7 +14,11 @@ service cloud.firestore {
     
     // Helper function to check if user belongs to the tenant
     function belongsToTenant(tenantId) {
-      return isAuthenticated() && getUserTenantId() == tenantId;
+      return isAuthenticated() && getUserTenantId() == tenantId &&
+        exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.role in ['owner', 'staff'] &&
+        (!('disabled' in get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data) ||
+          get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.disabled != true);
     }
     
     // Helper function to check if user has owner role
@@ -51,31 +55,37 @@ service cloud.firestore {
       // Clients
       match /clients/{clientId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if belongsToTenant(tenantId);
+        allow write: if false; // Shared server services enforce permissions and audit.
       }
       
       // Jobs
       match /jobs/{jobId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if belongsToTenant(tenantId);
+        allow write: if false;
       }
       
       // Job items
       match /jobItems/{itemId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if belongsToTenant(tenantId);
+        allow write: if false;
       }
       
       // Invoices
       match /invoices/{invoiceId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if belongsToTenant(tenantId);
+        allow write: if false;
+      }
+
+      // Client credit writes remain transactional server actions.
+      match /creditNotes/{creditId} {
+        allow read: if isOwner(tenantId);
+        allow write: if false;
       }
 
       // Quotes
       match /quotes/{quoteId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if belongsToTenant(tenantId);
+        allow write: if false;
       }
       
       // Invoice counter (internal only)

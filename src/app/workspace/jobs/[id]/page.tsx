@@ -1,5 +1,6 @@
 'use client';
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -47,12 +48,12 @@ export default function JobViewPage() {
             }
             setTenantId(tenantId);
 
-            const result = await getJob(tenantId, jobId);
+            const result = await getJob(tenantId, jobId, await requireActionIdToken());
             if (result.success) {
                 setJob(result.data);
 
                 // Load client information
-                const clientResult = await getClient(tenantId, result.data.clientId);
+                const clientResult = await getClient(tenantId, result.data.clientId, await requireActionIdToken());
                 if (clientResult.success) {
                     setClient(clientResult.data);
                 }
@@ -78,7 +79,7 @@ export default function JobViewPage() {
             return;
         }
 
-        const result = await deleteJob(tenantId, jobId);
+        const result = await deleteJob(tenantId, jobId, await requireActionIdToken());
         if (result.success) {
             router.push(JOB_ROUTES.LIST);
         } else {
@@ -99,10 +100,10 @@ export default function JobViewPage() {
             return;
         }
 
-        const result = await archiveJob(tenantId, jobId);
+        const result = await archiveJob(tenantId, jobId, await requireActionIdToken());
         if (result.success) {
             // Reload the job to show updated status
-            const updatedResult = await getJob(tenantId, jobId);
+            const updatedResult = await getJob(tenantId, jobId, await requireActionIdToken());
             if (updatedResult.success) {
                 setJob(updatedResult.data);
             }
@@ -362,7 +363,7 @@ function CreateQuoteModal({
             setLoading(true);
             setError(null);
 
-            const result = await getOpenJobItemsForQuote(tenantId, userId, jobId);
+            const result = await getOpenJobItemsForQuote(tenantId, userId, jobId, await requireActionIdToken());
             if (!result.success) {
                 setError(result.error);
                 setLoading(false);
@@ -409,7 +410,7 @@ function CreateQuoteModal({
         const result = await createQuoteFromJob(tenantId, userId, {
             jobId,
             jobItemIds: orderedSelectedItemIds,
-        });
+        }, await requireActionIdToken());
 
         if (!result.success) {
             setError(result.error);

@@ -280,6 +280,7 @@ export function formatTaxRate(rate: number): string {
  * Get status badge color
  */
 export function getStatusColor(status: InvoiceStatus | string): string {
+  if (status === "credited") return "bg-purple-100 text-purple-800";
   // Handle legacy "viewed" status for backwards compatibility
   if (status === "viewed") {
     return "bg-blue-100 text-blue-800"; // Treat as "sent"
@@ -300,6 +301,7 @@ export function getStatusColor(status: InvoiceStatus | string): string {
  * Get status display label
  */
 export function getStatusLabel(status: InvoiceStatus | string): string {
+  if (status === "credited") return "Credited / replaced";
   // Handle legacy "viewed" status for backwards compatibility
   if (status === "viewed") {
     return "Sent";

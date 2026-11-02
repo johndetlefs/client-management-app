@@ -149,6 +149,7 @@ export function listBasPeriods(
 }
 
 export function buildBasPreparationSummary(input: {
+  correctionReviewRequired?: boolean;
   settings: BasPreparationSettings;
   registration: GstRegistrationSettings | undefined;
   period: BasPeriod;
@@ -252,6 +253,7 @@ export function buildBasPreparationSummary(input: {
     (row) => row.gstIncludedAmountMinor,
   );
   const reviewReasons: string[] = [];
+  if (input.correctionReviewRequired) reviewReasons.push("Credit note adjustments need a GST reporting period.");
   if (reviewNeededCount > 0) {
     reviewReasons.push(
       `${reviewNeededCount} expense${reviewNeededCount === 1 ? "" : "s"} require GST or evidence review.`,
@@ -270,7 +272,7 @@ export function buildBasPreparationSummary(input: {
     reviewReasons.push("GST registration ends during the selected period.");
   }
 
-  if (settings.accountingBasis === "cash") {
+  if (settings.accountingBasis === "cash" || input.correctionReviewRequired) {
     reviewReasons.push(
       "Cash-basis sales and GST on sales are unavailable because invoices store cumulative payments without dated payment events.",
     );

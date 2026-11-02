@@ -1,5 +1,9 @@
 "use server";
 
+import { requireBusinessAccess } from "@/lib/business/server-access";
+import { BusinessError, businessActionFailure, assertResourceId } from "@/lib/business/errors";
+import { assertBusinessInput } from "@/lib/business/validation";
+
 import { adminDb } from "@/lib/firebase-admin";
 import {
   formatInvoiceNumber,
@@ -220,39 +224,16 @@ async function getNextQuoteNumber(
   return firstNumber;
 }
 
-async function ensureUserCanManageQuotes(
-  tenantId: string,
-  userId: string,
-): Promise<ActionResult<void>> {
-  const userDoc = await adminDb
-    .doc(`tenants/${tenantId}/users/${userId}`)
-    .get();
-
-  if (!userDoc.exists) {
-    return { success: false, error: "User is not assigned to this tenant" };
-  }
-
-  const role = userDoc.data()?.role;
-  if (role !== "owner" && role !== "staff") {
-    return {
-      success: false,
-      error: "You do not have permission to manage quotes",
-    };
-  }
-
-  return { success: true, data: undefined };
-}
-
 export async function getOpenJobItemsForQuote(
   tenantId: string,
   userId: string,
   jobId: string,
+  idToken: string,
 ): Promise<ActionResult<JobItem[]>> {
   try {
-    const permission = await ensureUserCanManageQuotes(tenantId, userId);
-    if (!permission.success) {
-      return permission;
-    }
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read", claimedUserId: userId });
+    assertResourceId(jobId, "jobId");
+
 
     const jobDoc = await adminDb.doc(`tenants/${tenantId}/jobs/${jobId}`).get();
     if (!jobDoc.exists) {
@@ -295,6 +276,7 @@ export async function getOpenJobItemsForQuote(
 
     return { success: true, data: items };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching open job items for quote:", error);
     return {
       success: false,
@@ -310,12 +292,12 @@ export async function createQuoteFromJob(
   tenantId: string,
   userId: string,
   data: CreateQuoteFromJobData,
+  idToken: string,
 ): Promise<ActionResult<{ quoteId: string; quoteNumber: string }>> {
   try {
-    const permission = await ensureUserCanManageQuotes(tenantId, userId);
-    if (!permission.success) {
-      return permission;
-    }
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare", claimedUserId: userId });
+    assertBusinessInput("quoteCreate", data);
+
 
     if (!data.jobId) {
       return { success: false, error: "Job is required" };
@@ -467,6 +449,7 @@ export async function createQuoteFromJob(
       },
     };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error creating quote from job:", error);
     return {
       success: false,
@@ -482,12 +465,12 @@ export async function getQuoteForEdit(
   tenantId: string,
   userId: string,
   quoteId: string,
+  idToken: string,
 ): Promise<ActionResult<Quote>> {
   try {
-    const permission = await ensureUserCanManageQuotes(tenantId, userId);
-    if (!permission.success) {
-      return permission;
-    }
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.read", claimedUserId: userId });
+    assertResourceId(quoteId, "quoteId");
+
 
     const quoteRef = adminDb.doc(`tenants/${tenantId}/quotes/${quoteId}`);
     const quoteSnap = await quoteRef.get();
@@ -503,6 +486,7 @@ export async function getQuoteForEdit(
     );
     return { success: true, data: quote };
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error fetching quote for edit:", error);
     return {
       success: false,
@@ -516,12 +500,13 @@ export async function updateQuoteDetails(
   userId: string,
   quoteId: string,
   data: { quoteDisplayNumber: string; notes?: string },
+  idToken: string,
 ): Promise<ActionResult<Quote>> {
   try {
-    const permission = await ensureUserCanManageQuotes(tenantId, userId);
-    if (!permission.success) {
-      return permission;
-    }
+    await requireBusinessAccess({ tenantId, idToken, capability: "business.prepare", claimedUserId: userId });
+    assertResourceId(quoteId, "quoteId");
+    assertBusinessInput("quoteUpdate", data);
+
 
     const nextDisplayNumber = data.quoteDisplayNumber.trim();
     if (!nextDisplayNumber) {
@@ -562,8 +547,9 @@ export async function updateQuoteDetails(
       });
     });
 
-    return getQuoteForEdit(tenantId, userId, quoteId);
+    return getQuoteForEdit(tenantId, userId, quoteId, idToken);
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error updating quote details:", error);
     return {
       success: false,
@@ -580,12 +566,13 @@ export async function updateQuoteStatus(
   userId: string,
   quoteId: string,
   nextStatus: "sent" | "accepted" | "cancelled",
+  idToken: string,
 ): Promise<ActionResult<Quote>> {
   try {
-    const permission = await ensureUserCanManageQuotes(tenantId, userId);
-    if (!permission.success) {
-      return permission;
-    }
+    await requireBusinessAccess({ tenantId, idToken, capability: (nextStatus === "cancelled" ? "documents.cancel" : "documents.issue"), claimedUserId: userId });
+    assertResourceId(quoteId, "quoteId");
+    if (!["sent", "accepted", "cancelled"].includes(nextStatus)) throw new BusinessError("VALIDATION_ERROR", "Invalid quote status");
+
 
     const quoteRef = adminDb.doc(`tenants/${tenantId}/quotes/${quoteId}`);
 
@@ -627,8 +614,9 @@ export async function updateQuoteStatus(
       transaction.update(quoteRef, statusUpdate);
     });
 
-    return getQuoteForEdit(tenantId, userId, quoteId);
+    return getQuoteForEdit(tenantId, userId, quoteId, idToken);
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error updating quote status:", error);
     return {
       success: false,
@@ -644,12 +632,12 @@ export async function regenerateQuotePublicToken(
   tenantId: string,
   userId: string,
   quoteId: string,
+  idToken: string,
 ): Promise<ActionResult<Quote>> {
   try {
-    const permission = await ensureUserCanManageQuotes(tenantId, userId);
-    if (!permission.success) {
-      return permission;
-    }
+    await requireBusinessAccess({ tenantId, idToken, capability: "documents.share", claimedUserId: userId });
+    assertResourceId(quoteId, "quoteId");
+
 
     const quoteRef = adminDb.doc(`tenants/${tenantId}/quotes/${quoteId}`);
     await adminDb.runTransaction(async (transaction) => {
@@ -666,8 +654,9 @@ export async function regenerateQuotePublicToken(
       });
     });
 
-    return getQuoteForEdit(tenantId, userId, quoteId);
+    return getQuoteForEdit(tenantId, userId, quoteId, idToken);
   } catch (error) {
+    if (error instanceof BusinessError) return businessActionFailure(error, "Business operation failed");
     console.error("Error regenerating quote public token:", error);
     return {
       success: false,

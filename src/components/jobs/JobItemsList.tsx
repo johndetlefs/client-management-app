@@ -1,5 +1,6 @@
 'use client';
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -60,7 +61,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
             setLoading(true);
             setError(null);
 
-            const result = await getJobItems(tenantId, jobId);
+            const result = await getJobItems(tenantId, jobId, await requireActionIdToken());
             if (result.success) {
                 setJobItems(result.data);
             } else {
@@ -140,9 +141,9 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
 
         let result;
         if (editingItemId) {
-            result = await updateJobItem(tenantId, editingItemId, formData);
+            result = await updateJobItem(tenantId, editingItemId, formData, await requireActionIdToken());
         } else {
-            result = await createJobItem(tenantId, user.uid, formData);
+            result = await createJobItem(tenantId, user.uid, formData, await requireActionIdToken());
         }
 
         if (result.success) {
@@ -159,7 +160,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
             return;
         }
 
-        const result = await deleteJobItem(tenantId, itemId);
+        const result = await deleteJobItem(tenantId, itemId, await requireActionIdToken());
         if (result.success) {
             setRefreshTrigger(prev => prev + 1);
         } else {
@@ -168,7 +169,7 @@ export function JobItemsList({ jobId, clientId }: JobItemsListProps) {
     };
 
     const handleMoveItem = async (itemId: string, direction: 'up' | 'down') => {
-        const result = await moveJobItemOrder(tenantId, jobId, itemId, direction);
+        const result = await moveJobItemOrder(tenantId, jobId, itemId, direction, await requireActionIdToken());
         if (result.success) {
             setRefreshTrigger(prev => prev + 1);
         } else {

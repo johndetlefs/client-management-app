@@ -1,5 +1,7 @@
 "use client";
+import {InvoiceCreditsPanel} from "@/components/invoices/InvoiceCreditsPanel";
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useParams } from "next/navigation";
@@ -24,7 +26,6 @@ import {
     addItemsToInvoice,
     removeItemFromInvoice,
     issueInvoice,
-    updateInvoicePayment,
     voidInvoice,
     deleteDraftInvoice,
     getOpenJobItemsForClient,
@@ -43,8 +44,9 @@ export default function InvoiceDetailPage() {
     const [settings, setSettings] = useState<TenantSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [showItemSelector, setShowItemSelector] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const [notice, setNotice] = useState("");
+    const [pendingAction, setPendingAction] = useState<{ message: string; run: () => Promise<void> } | null>(null);
 
     // Get tenant ID and user role
     useEffect(() => {
@@ -63,7 +65,7 @@ export default function InvoiceDetailPage() {
 
         // Load settings
         const loadSettings = async () => {
-            const result = await getInvoiceForPrint(tenantId, invoiceId);
+            const result = await getInvoiceForPrint(tenantId, invoiceId, await requireActionIdToken());
             if (result.success && result.data) {
                 setSettings(result.data.settings);
             }
@@ -95,103 +97,84 @@ export default function InvoiceDetailPage() {
         return () => unsubscribe();
     }, [tenantId, invoiceId]);
 
-    const handleRemoveItem = async (jobItemId: string) => {
+    const executeRemoveItem = async (jobItemId: string) => {
         if (!tenantId || !invoice) return;
-        if (!confirm("Remove this item from the invoice?")) return;
 
         setProcessing(true);
         try {
-            const result = await removeItemFromInvoice(tenantId, invoice.id, jobItemId);
+            const result = await removeItemFromInvoice(tenantId, invoice.id, jobItemId, await requireActionIdToken());
             if (!result.success) {
-                alert(result.error);
+                setNotice(result.error || "Action failed");
             }
         } catch (error) {
             console.error("Error removing item:", error);
-            alert("Failed to remove item");
+            setNotice("Failed to remove item");
         } finally {
             setProcessing(false);
         }
     };
 
-    const handleIssueInvoice = async () => {
+    const executeIssueInvoice = async () => {
         if (!tenantId || !invoice || !user) return;
-        if (!confirm("Issue this invoice? This will assign an invoice number and lock all items. This action cannot be undone.")) return;
 
         setProcessing(true);
         try {
-            const result = await issueInvoice(tenantId, invoice.id, user.uid);
+            const result = await issueInvoice(tenantId, invoice.id, user.uid, await requireActionIdToken());
             if (result.success) {
-                alert("Invoice issued successfully!");
+                setNotice("Invoice issued successfully!");
             } else {
-                alert(result.error);
+                setNotice(result.error || "Action failed");
             }
         } catch (error) {
             console.error("Error issuing invoice:", error);
-            alert("Failed to issue invoice");
+            setNotice("Failed to issue invoice");
         } finally {
             setProcessing(false);
         }
     };
 
-    const handleVoidInvoice = async () => {
+    const executeVoidInvoice = async () => {
         if (!tenantId || !invoice || !userRole) return;
-        if (!confirm("Void this invoice? This action cannot be undone.")) return;
 
         setProcessing(true);
         try {
-            const result = await voidInvoice(tenantId, invoice.id, userRole);
+            const result = await voidInvoice(tenantId, invoice.id, userRole, await requireActionIdToken());
             if (result.success) {
-                alert("Invoice voided successfully");
+                setNotice("Invoice voided successfully");
             } else {
-                alert(result.error);
+                setNotice(result.error || "Action failed");
             }
         } catch (error) {
             console.error("Error voiding invoice:", error);
-            alert("Failed to void invoice");
+            setNotice("Failed to void invoice");
         } finally {
             setProcessing(false);
         }
     };
 
-    const handleDeleteDraft = async () => {
+    const executeDeleteDraft = async () => {
         if (!tenantId || !invoice) return;
-        if (!confirm("Delete this draft invoice? This action cannot be undone.")) return;
 
         setProcessing(true);
         try {
-            const result = await deleteDraftInvoice(tenantId, invoice.id);
+            const result = await deleteDraftInvoice(tenantId, invoice.id, await requireActionIdToken());
             if (result.success) {
                 router.push("/workspace/invoices");
             } else {
-                alert(result.error);
+                setNotice(result.error || "Action failed");
             }
         } catch (error) {
             console.error("Error deleting invoice:", error);
-            alert("Failed to delete invoice");
+            setNotice("Failed to delete invoice");
         } finally {
             setProcessing(false);
         }
     };
 
-    const handleUpdatePayment = async (amountPaidMinor: number) => {
-        if (!tenantId || !invoice) return;
-
-        setProcessing(true);
-        try {
-            const result = await updateInvoicePayment(tenantId, invoice.id, amountPaidMinor);
-            if (result.success) {
-                setShowPaymentModal(false);
-                alert("Payment updated successfully");
-            } else {
-                alert(result.error);
-            }
-        } catch (error) {
-            console.error("Error updating payment:", error);
-            alert("Failed to update payment");
-        } finally {
-            setProcessing(false);
-        }
-    };
+    const handleRemoveItem = (jobItemId: string) => setPendingAction({ message: "Remove this item from the draft invoice?", run: () => executeRemoveItem(jobItemId) });
+    const handleIssueInvoice = () => setPendingAction({ message: "Issue this invoice and assign a number? This records the issued invoice. No email is sent.", run: executeIssueInvoice });
+    const handleVoidInvoice = () => setPendingAction({ message: "Void this invoice and release its items? Linked correction documents cannot be voided independently.", run: executeVoidInvoice });
+    const handleDeleteDraft = () => setPendingAction({ message: "Delete this draft invoice? Issued invoice history is retained.", run: executeDeleteDraft });
 
     if (loading) {
         return (
@@ -217,13 +200,15 @@ export default function InvoiceDetailPage() {
 
     const isDraft = invoice.status === "draft";
     const canEdit = isDraft;
-    const canVoid = userRole === "owner" && invoice.status !== "void" && invoice.status !== "draft";
+    const canVoid = !invoice.creditedBy && !invoice.correctionId && !invoice.creditAppliedMinor && !invoice.creditNoteIssuedMinor && userRole === "owner" && invoice.status !== "void" && invoice.status !== "draft";
     const canDelete = isDraft;
     const canUpdatePayment = invoice.status !== "draft" && invoice.status !== "void";
     const canIssue = isDraft && invoice.lines.length > 0;
 
     return (
         <div className="p-8 max-w-5xl mx-auto">
+            {notice && <p role="status" aria-live="polite" className="border rounded p-3 mb-4">{notice}</p>}
+            {pendingAction && <section aria-label="Confirm invoice action" className="border rounded p-4 mb-4 space-y-3"><p>{pendingAction.message}</p><Button variant="secondary" onClick={()=>setPendingAction(null)}>Cancel</Button><Button disabled={processing} onClick={()=>{const action=pendingAction;setPendingAction(null);void action.run();}}>Confirm action</Button></section>}
             {/* Header */}
             <div className="mb-6">
                 <Link href="/workspace/invoices" className="text-blue-600 hover:underline mb-2 inline-block">
@@ -234,10 +219,13 @@ export default function InvoiceDetailPage() {
                         <h1 className="text-3xl font-bold">
                             {invoice.invoiceDisplayNumber || invoice.invoiceNumber || "Draft Invoice"}
                         </h1>
+                    {invoice.creditedBy && <p role="status" className="border p-3">Credited and replaced. <Link className="underline" href={`/workspace/invoices/credits/${invoice.creditedBy}`}>View credit note</Link></p>}
+                    {invoice.correctionId && <Link className="underline block" href={`/workspace/invoices/credits/${invoice.correctionId}`}>View credit note</Link>}
+
                         <p className="text-gray-600 mt-1">{invoice.clientName}</p>
                     </div>
-                    <span className={`px-3 py-1 text-sm font-medium rounded ${getStatusColor(invoice.status)}`}>
-                        {getStatusLabel(invoice.status)}
+                    <span className={`px-3 py-1 text-sm font-medium rounded ${getStatusColor(invoice.creditedBy ? "credited" : invoice.status)}`}>
+                        {getStatusLabel(invoice.creditedBy ? "credited" : invoice.status)}
                     </span>
                 </div>
             </div>
@@ -402,7 +390,8 @@ export default function InvoiceDetailPage() {
                                 <span>Total:</span>
                                 <span>{formatCurrency(invoice.totalMinor)}</span>
                             </div>
-                            {invoice.amountPaidMinor > 0 && (
+                            {(invoice.creditAppliedMinor||0)>0&&<div className="flex justify-between py-2 text-green-600"><span>Credits Applied:</span><span>-{formatCurrency(invoice.creditAppliedMinor||0)}</span></div>}
+                            {(invoice.amountPaidMinor > 0 || (invoice.creditAppliedMinor||0)>0) && (
                                 <>
                                     <div className="flex justify-between text-green-600">
                                         <span>Paid:</span>
@@ -418,6 +407,8 @@ export default function InvoiceDetailPage() {
                     </div>
                 )}
             </Card>
+
+            {!isDraft&&invoice.status!=="void"&&!invoice.creditedBy&&<InvoiceCreditsPanel invoiceId={invoice.id}/>}
 
             {/* Notes */}
             {invoice.notes && (
@@ -447,7 +438,7 @@ export default function InvoiceDetailPage() {
                             onClick={() => {
                                 const url = `${window.location.origin}/public/invoice/${invoice.publicToken}`;
                                 navigator.clipboard.writeText(url);
-                                alert('Link copied to clipboard!');
+                                setNotice('Link copied to clipboard!');
                             }}
                         >
                             Copy Link
@@ -470,8 +461,8 @@ export default function InvoiceDetailPage() {
                     </Button>
                 )}
                 {canUpdatePayment && (
-                    <Button variant="secondary" onClick={() => setShowPaymentModal(true)} disabled={processing}>
-                        Update Payment
+                    <Button variant="secondary" onClick={() => router.push(`/workspace/finances?invoice=${encodeURIComponent(invoice.id)}`)} disabled={processing}>
+                        Record Dated Receipt
                     </Button>
                 )}
                 {canIssue && (
@@ -497,57 +488,7 @@ export default function InvoiceDetailPage() {
                 />
             )}
 
-            {/* Payment Modal */}
-            {showPaymentModal && (
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <Card className="max-w-md w-full p-6">
-                        <h2 className="text-xl font-bold mb-4">Update Payment</h2>
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const formData = new FormData(e.currentTarget);
-                                const amount = parseFloat(formData.get("amount") as string);
-                                const amountMinor = Math.round(amount * 100);
-                                handleUpdatePayment(amountMinor);
-                            }}
-                        >
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Amount Paid</label>
-                                    <input
-                                        type="number"
-                                        name="amount"
-                                        step="0.01"
-                                        min="0"
-                                        max={invoice.totalMinor / 100}
-                                        defaultValue={invoice.amountPaidMinor / 100}
-                                        required
-                                        className="w-full px-3 py-2 border rounded-md"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Total: {formatCurrency(invoice.totalMinor)}
-                                    </p>
-                                </div>
-                            </div>
 
-                            <div className="flex gap-3 mt-6">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={() => setShowPaymentModal(false)}
-                                    disabled={processing}
-                                    className="flex-1"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button type="submit" disabled={processing} className="flex-1">
-                                    {processing ? "Updating..." : "Update"}
-                                </Button>
-                            </div>
-                        </form>
-                    </Card>
-                </div>
-            )}
         </div>
     );
 }
@@ -570,15 +511,16 @@ function ItemSelectorModal({
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
+    const [notice, setNotice] = useState("");
     const taxRate = settings?.tax?.defaultRate || 0;
 
     useEffect(() => {
         const loadItems = async () => {
-            const result = await getOpenJobItemsForClient(tenantId, clientId);
+            const result = await getOpenJobItemsForClient(tenantId, clientId, await requireActionIdToken());
             if (result.success) {
                 setItems(result.data);
             } else {
-                alert(result.error);
+                setNotice(result.error || "Action failed");
             }
             setLoading(false);
         };
@@ -604,15 +546,15 @@ function ItemSelectorModal({
                 .filter((item) => selectedIds.has(item.id))
                 .map((item) => item.id);
 
-            const result = await addItemsToInvoice(tenantId, invoiceId, orderedSelectedIds);
+            const result = await addItemsToInvoice(tenantId, invoiceId, orderedSelectedIds, await requireActionIdToken());
             if (result.success) {
                 onClose();
             } else {
-                alert(result.error);
+                setNotice(result.error || "Action failed");
             }
         } catch (error) {
             console.error("Error adding items:", error);
-            alert("Failed to add items");
+            setNotice("Failed to add items");
         } finally {
             setAdding(false);
         }
@@ -621,6 +563,7 @@ function ItemSelectorModal({
     return (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <Card className="max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+                {notice && <p role="status" aria-live="polite">{notice}</p>}
                 <div className="p-6 border-b">
                     <h2 className="text-xl font-bold">Select Job Items</h2>
                     <p className="text-sm text-gray-600 mt-1">

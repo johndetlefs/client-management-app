@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
@@ -67,7 +68,7 @@ export default function InvoicesPage() {
     const filteredInvoices = useMemo(() => {
         return invoices.filter((invoice) => {
             // Filter by status
-            if (filterStatus !== "all" && invoice.status !== filterStatus) {
+            if (filterStatus !== "all" && (invoice.creditedBy || invoice.status !== filterStatus)) {
                 return false;
             }
 
@@ -99,6 +100,7 @@ export default function InvoicesPage() {
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-bold">Invoices</h1>
+                <Link className="underline" href="/workspace/invoices/credits">Credit notes</Link>
                     <p className="text-gray-600 mt-1">Manage and track your invoices</p>
                 </div>
                 <Button onClick={handleCreateNew}>
@@ -212,8 +214,8 @@ export default function InvoicesPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col gap-1">
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${getStatusColor(invoice.status)} w-fit`}>
-                                                        {getStatusLabel(invoice.status)}
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${getStatusColor(invoice.creditedBy ? "credited" : invoice.status)} w-fit`}>
+                                                        {getStatusLabel(invoice.creditedBy ? "credited" : invoice.status)}
                                                     </span>
                                                     {overdue && (
                                                         <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800 w-fit">

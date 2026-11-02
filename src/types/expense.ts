@@ -205,6 +205,7 @@ export interface ExpenseCandidateSuggestion {
  */
 export interface ExpenseCandidate extends ExpenseAuditFields {
   id: string;
+  financeMovementId?: string;
   importBatchId: string;
   sourceFileId?: string;
   sourceFormat: ExpenseSourceFormat;
@@ -255,6 +256,7 @@ export interface ExpenseCategory extends ExpenseAuditFields {
  */
 export interface Expense extends ExpenseAuditFields {
   id: string;
+  financeMovementId?: string;
   candidateId?: string;
   importBatchId?: string;
   sourceFileId?: string;

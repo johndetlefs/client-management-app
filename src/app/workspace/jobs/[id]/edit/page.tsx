@@ -1,5 +1,6 @@
 'use client';
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -49,7 +50,7 @@ export default function JobEditPage() {
             setLoadingClients(true);
             const tenantId = await getCurrentUserTenantId();
             if (tenantId) {
-                const result = await getClients(tenantId);
+                const result = await getClients(tenantId, await requireActionIdToken());
                 if (result.success) {
                     // Filter to only active clients
                     setClients(result.data.filter(c => c.isActive));
@@ -81,7 +82,7 @@ export default function JobEditPage() {
                 return;
             }
 
-            const result = await getJob(tenantId, jobId);
+            const result = await getJob(tenantId, jobId, await requireActionIdToken());
             if (result.success) {
                 const job = result.data;
                 setClientId(job.clientId);
@@ -165,9 +166,9 @@ export default function JobEditPage() {
 
         let result;
         if (isNewJob) {
-            result = await createJob(tenantId, user.uid, formData);
+            result = await createJob(tenantId, user.uid, formData, await requireActionIdToken());
         } else {
-            result = await updateJob(tenantId, jobId, formData);
+            result = await updateJob(tenantId, jobId, formData, await requireActionIdToken());
         }
 
         if (result.success) {

@@ -22,6 +22,7 @@ export const WORKSPACE_ROUTES = {
   JOBS: "/workspace/jobs", // Future
   INVOICES: "/workspace/invoices", // Future
   EXPENSES: "/workspace/expenses",
+  FINANCES: "/workspace/finances",
   QUOTES: "/workspace/quotes",
   SETTINGS: "/workspace/settings",
 } as const;
@@ -120,6 +121,7 @@ export const WORKSPACE_NAV_ITEMS: NavItem[] = [
     href: WORKSPACE_ROUTES.QUOTES,
     icon: "🧾",
   },
+  { label: "Finances", href: WORKSPACE_ROUTES.FINANCES },
 ];
 
 /**

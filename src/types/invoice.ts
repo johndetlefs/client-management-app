@@ -69,9 +69,14 @@ export interface Invoice {
   totalMinor: number; // subtotalMinor + taxMinor
   taxBreakdown: TaxBreakdown[]; // Breakdown by tax rate
 
+  // Credits settle invoices separately from actual cash receipts.
+  currency?: string;
+  creditAppliedMinor?: number;
+  creditNoteIssuedMinor?: number;
+
   // Payment tracking
   amountPaidMinor: number; // Amount paid so far
-  balanceDueMinor: number; // totalMinor - amountPaidMinor
+  balanceDueMinor: number; // totalMinor - amountPaidMinor - creditAppliedMinor
 
   // Client snapshot (denormalized for display)
   clientName: string;
@@ -84,6 +89,13 @@ export interface Invoice {
     postcode?: string;
     country?: string;
   };
+
+  // Linked correction metadata; original economic values remain unchanged.
+  creditedBy?: string;
+  creditedAt?: string;
+  replacementId?: string;
+  correctionId?: string;
+  originalInvoiceIds?: string[];
 
   // Public access
   publicToken?: string; // Random token for public read-only access

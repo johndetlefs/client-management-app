@@ -1,5 +1,6 @@
 'use client';
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -38,12 +39,12 @@ export default function ClientViewPage() {
                 return;
             }
 
-            const result = await getClient(tenantId, clientId);
+            const result = await getClient(tenantId, clientId, await requireActionIdToken());
             if (result.success) {
                 setClient(result.data);
 
                 // Load jobs for this client
-                const jobsResult = await getJobsByClient(tenantId, clientId);
+                const jobsResult = await getJobsByClient(tenantId, clientId, await requireActionIdToken());
                 if (jobsResult.success) {
                     setJobs(jobsResult.data);
                 } else {
@@ -71,7 +72,7 @@ export default function ClientViewPage() {
             return;
         }
 
-        const result = await deleteClient(tenantId, clientId);
+        const result = await deleteClient(tenantId, clientId, await requireActionIdToken());
         if (result.success) {
             router.push(CLIENT_ROUTES.LIST);
         } else {

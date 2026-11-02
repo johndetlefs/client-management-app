@@ -1,5 +1,6 @@
 'use client';
 
+import { requireActionIdToken } from "@/lib/action-auth";
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -23,7 +24,7 @@ export default function InvoicePrintPage() {
             setLoading(true);
             setError('');
 
-            const result = await getInvoiceForPrint(tenantId, invoiceId);
+            const result = await getInvoiceForPrint(tenantId, invoiceId, await requireActionIdToken());
 
             if (result.success && result.data) {
                 setInvoice(result.data.invoice);
@@ -363,7 +364,8 @@ export default function InvoicePrintPage() {
                             <span className="text-2xl font-bold">{formatCurrency(invoice.totalMinor)}</span>
                         </div>
 
-                        {invoice.amountPaidMinor > 0 && (
+                        {(invoice.creditAppliedMinor||0)>0&&<div className="flex justify-between py-2 text-green-600"><span>Credits Applied:</span><span>-{formatCurrency(invoice.creditAppliedMinor||0)}</span></div>}
+                            {(invoice.amountPaidMinor > 0 || (invoice.creditAppliedMinor||0)>0) && (
                             <>
                                 <div className="flex justify-between py-2 text-green-600">
                                     <span className="font-medium">Amount Paid</span>
