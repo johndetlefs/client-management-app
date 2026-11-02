@@ -23,7 +23,14 @@ export const WORKSPACE_ROUTES = {
   INVOICES: "/workspace/invoices", // Future
   CREDITS: "/workspace/credits",
   EXPENSES: "/workspace/expenses",
-  FINANCES: "/workspace/finances",
+  FINANCES: "/workspace/finances", // Legacy payment/report entry
+  SALES: "/workspace/sales",
+  BOOKKEEPING: "/workspace/bookkeeping",
+  PAYMENTS: "/workspace/payments",
+  REPORTS: "/workspace/reports",
+  RECEIVABLES_REPORT: "/workspace/reports/receivables",
+  BAS_REPORT: "/workspace/reports/bas",
+  EXPENSE_SETTINGS: "/workspace/settings/expenses",
   QUOTES: "/workspace/quotes",
   SETTINGS: "/workspace/settings",
 } as const;
@@ -97,48 +104,62 @@ export const ROUTES = {
 export interface NavItem {
   label: string;
   href: string;
-  icon?: string;
-  comingSoon?: boolean;
+}
+export interface WorkspaceSection extends NavItem {
+  id: string;
+  children: NavItem[];
 }
 
-export const WORKSPACE_NAV_ITEMS: NavItem[] = [
-  {
-    label: "Dashboard",
-    href: WORKSPACE_ROUTES.DASHBOARD,
-    icon: "🏠",
-  },
-  {
-    label: "Clients",
-    href: WORKSPACE_ROUTES.CLIENTS,
-    icon: "👥",
-  },
-  {
-    label: "Jobs",
-    href: WORKSPACE_ROUTES.JOBS,
-    icon: "💼",
-  },
-  {
-    label: "Invoices",
-    href: WORKSPACE_ROUTES.INVOICES,
-    icon: "📄",
-  },
-  {
-    label: "Credit notes",
-    href: WORKSPACE_ROUTES.CREDITS,
-    icon: "↩",
-  },
-  {
-    label: "Expenses",
-    href: WORKSPACE_ROUTES.EXPENSES,
-    icon: "💳",
-  },
-  {
-    label: "Quotes",
-    href: WORKSPACE_ROUTES.QUOTES,
-    icon: "🧾",
-  },
-  { label: "Finances", href: WORKSPACE_ROUTES.FINANCES },
+export const WORKSPACE_NAV_ITEMS: WorkspaceSection[] = [
+  { id: "clients", label: "Clients", href: WORKSPACE_ROUTES.CLIENTS, children: [] },
+  { id: "jobs", label: "Jobs", href: WORKSPACE_ROUTES.JOBS, children: [] },
+  { id: "sales", label: "Sales", href: WORKSPACE_ROUTES.SALES, children: [
+    { label: "Quotes", href: WORKSPACE_ROUTES.QUOTES },
+    { label: "Invoices", href: WORKSPACE_ROUTES.INVOICES },
+    { label: "Credit notes", href: WORKSPACE_ROUTES.CREDITS },
+  ] },
+  { id: "bookkeeping", label: "Bookkeeping", href: WORKSPACE_ROUTES.BOOKKEEPING, children: [
+    { label: "Payments received", href: WORKSPACE_ROUTES.PAYMENTS },
+    { label: "Expenses", href: WORKSPACE_ROUTES.EXPENSES },
+  ] },
+  { id: "reports", label: "Reports", href: WORKSPACE_ROUTES.REPORTS, children: [
+    { label: "Receivables & credits", href: WORKSPACE_ROUTES.RECEIVABLES_REPORT },
+    { label: "BAS preparation", href: WORKSPACE_ROUTES.BAS_REPORT },
+  ] },
 ];
+
+const SETTINGS_SECTION: WorkspaceSection = { id: "settings", label: "Business settings", href: WORKSPACE_ROUTES.SETTINGS, children: [
+  { label: "Business & invoices", href: WORKSPACE_ROUTES.SETTINGS },
+  { label: "Expense settings", href: WORKSPACE_ROUTES.EXPENSE_SETTINGS },
+] };
+
+export function isWithinRoute(path: string, href: string): boolean {
+  return path === href || path.startsWith(href + "/");
+}
+
+/** Shared by desktop, mobile and breadcrumbs so documents never acquire different parents. */
+export function getWorkspaceNavigation(path: string) {
+  const section = [...WORKSPACE_NAV_ITEMS, SETTINGS_SECTION].find(group =>
+    isWithinRoute(path, group.href) || group.children.some(item => isWithinRoute(path, item.href))
+  );
+  const item = section?.children.filter(child => isWithinRoute(path, child.href)).sort((a, b) => b.href.length - a.href.length)[0];
+  const base = item?.href || section?.href;
+  const remainder = base && path !== base ? path.slice(base.length + 1).split("/") : [];
+  const detail = remainder.length ? remainder[0] === "new" ? "New" : remainder.includes("edit") ? "Edit" : remainder.includes("print") ? "Print preview" : "Details" : undefined;
+  return { section, item, detail };
+}
+
+/** Preserve old Finances bookmarks and invoice-prefilled payment URLs without retaining a mixed workspace. */
+export function legacyFinanceDestination(params: Record<string, string | string[] | undefined>): string {
+  const report = params.tab === "reports";
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "tab" || value === undefined) continue;
+    for (const part of Array.isArray(value) ? value : [value]) query.append(key, part);
+  }
+  const destination = report ? WORKSPACE_ROUTES.RECEIVABLES_REPORT : WORKSPACE_ROUTES.PAYMENTS;
+  return query.size ? `${destination}?${query}` : destination;
+}
 
 /**
  * Helper to check if a path is a workspace route

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { useRouter } from 'next/navigation';
 import { getCurrentUserTenantId } from '@/lib/tenant';
+import { WorkspaceNavigation } from '@/components/layout/WorkspaceNavigation';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { ROUTES } from '@/lib/routes';
 
@@ -129,6 +130,7 @@ export default function WorkspaceLayout({
         <WorkspaceProvider tenantId={tenantId}>
             <div className="min-h-screen bg-background">
                 <AppHeader />
+                <WorkspaceNavigation />
                 <main>{children}</main>
             </div>
         </WorkspaceProvider>
