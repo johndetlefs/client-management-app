@@ -32,7 +32,7 @@ export interface FinancialReport {
   sourceIdentity?: string;
   version: string; period: FinancialPeriod; basis: string;
   totals: { receivedMinor: number; receivedGstMinor: number; allocatedMinor: number; unallocatedMinor: number; grossCostMinor: number; workCostMinor: number; privateCostMinor: number; gstCreditMinor: number; operatingMinor: number; capitalMinor: number; allowanceMinor: number; nonDeductibleMinor: number; cashSurplusMinor: number; indicativeProfitMinor: number; datedLedgerRemainingMinor: number; undatedPaidMinor: number };
-  receipts: { id: string; date: string; amountMinor: number; accountId: string; movementId?: string; evidence: string; allocations: { invoiceId: string; invoiceNumber: string; amountMinor: number }[] }[];
+  receipts: { id: string; date: string; amountMinor: number; gstMinor: number; accountId: string; movementId?: string; evidence: string; allocations: { invoiceId: string; invoiceNumber: string; amountMinor: number }[] }[];
   costs: CostRow[];
   invoices: { id: string; number: string; issueDate: string; totalMinor: number; datedPaidThroughEndMinor: number; creditsAppliedThroughEndMinor?: number; datedLedgerRemainingMinor: number; legacyUndatedMinor: number; currentBalanceMinor: number }[];
   categories: { category: string; grossMinor: number; workMinor: number; operatingMinor: number; capitalMinor: number; allowanceMinor: number }[];
@@ -66,7 +66,7 @@ export function buildFinancialReport(input: ReportInput): FinancialReport {
     if (original?.kind === "allocation" && original.invoiceId) appliedByInvoice.set(original.invoiceId,add(appliedByInvoice.get(original.invoiceId)||0,e.kind === "reversal" ? -e.amountMinor : e.amountMinor));
   }
   if (credits.length) sourceException("Client credits and recorded refunds are listed separately from cash receipts. Their GST adjustment periods and any bank refund reconciliation are not assigned by the credit issue date.");
-  const receipts = historicalReceipts.filter((r) => inPeriod(r.date, period)).map((r) => ({ id: r.id, date: r.date, accountId: r.accountId, ...(r.movementId ? { movementId: r.movementId } : {}), amountMinor: minor(r.amountMinor), evidence: r.evidence, allocations: r.allocations.map((a) => ({ invoiceId: a.invoiceId, invoiceNumber: invoicesById.get(a.invoiceId)?.number || a.invoiceId, amountMinor: minor(a.amountMinor) })) }));
+  const receipts = historicalReceipts.filter((r) => inPeriod(r.date, period)).map((r) => ({ id: r.id, date: r.date, accountId: r.accountId, ...(r.movementId ? { movementId: r.movementId } : {}), amountMinor: minor(r.amountMinor), gstMinor: receiptTaxes.get(r.id) || 0, evidence: r.evidence, allocations: r.allocations.map((a) => ({ invoiceId: a.invoiceId, invoiceNumber: invoicesById.get(a.invoiceId)?.number || a.invoiceId, amountMinor: minor(a.amountMinor) })) }));
   for (const r of receipts) if (sum(r.allocations.map((a) => a.amountMinor)) < r.amountMinor) exceptions.push(`Receipt ${r.id}: unallocated business cash requires remittance review.`);
   const expensesById = new Map(input.expenses.map((e) => [e.id, e]));
   const movementsById = new Map(input.movements.map((m) => [m.id, m]));

@@ -1,2 +1,2 @@
 import { redirect } from "next/navigation";
-export default function ReportsPage() { redirect("/workspace/reports/receivables"); }
+export default function ReportsPage() { redirect("/workspace/reports/profit-loss"); }

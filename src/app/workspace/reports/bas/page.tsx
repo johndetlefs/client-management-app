@@ -1,2 +1,2 @@
-import { ExpensesWorkspace } from "@/app/workspace/expenses/ExpensesWorkspace";
-export default function BasPage() { return <ExpensesWorkspace section="bas" />; }
+import { redirect } from "next/navigation";
+export default function LegacyPage() { redirect("/workspace/bookkeeping/bas"); }

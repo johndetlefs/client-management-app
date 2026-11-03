@@ -28,8 +28,9 @@ export const WORKSPACE_ROUTES = {
   BOOKKEEPING: "/workspace/bookkeeping",
   PAYMENTS: "/workspace/payments",
   REPORTS: "/workspace/reports",
-  RECEIVABLES_REPORT: "/workspace/reports/receivables",
-  BAS_REPORT: "/workspace/reports/bas",
+  RECEIVABLES_REPORT: "/workspace/bookkeeping/receivables",
+  BAS_REPORT: "/workspace/bookkeeping/bas",
+  PROFIT_LOSS: "/workspace/reports/profit-loss",
   EXPENSE_SETTINGS: "/workspace/settings/expenses",
   QUOTES: "/workspace/quotes",
   SETTINGS: "/workspace/settings",
@@ -121,11 +122,10 @@ export const WORKSPACE_NAV_ITEMS: WorkspaceSection[] = [
   { id: "bookkeeping", label: "Bookkeeping", href: WORKSPACE_ROUTES.BOOKKEEPING, children: [
     { label: "Payments received", href: WORKSPACE_ROUTES.PAYMENTS },
     { label: "Expenses", href: WORKSPACE_ROUTES.EXPENSES },
-  ] },
-  { id: "reports", label: "Reports", href: WORKSPACE_ROUTES.REPORTS, children: [
-    { label: "Receivables & credits", href: WORKSPACE_ROUTES.RECEIVABLES_REPORT },
+    { label: "Receivables & client credits", href: WORKSPACE_ROUTES.RECEIVABLES_REPORT },
     { label: "BAS preparation", href: WORKSPACE_ROUTES.BAS_REPORT },
   ] },
+  { id: "reports", label: "Reports", href: WORKSPACE_ROUTES.REPORTS, children: [] },
 ];
 
 const SETTINGS_SECTION: WorkspaceSection = { id: "settings", label: "Business settings", href: WORKSPACE_ROUTES.SETTINGS, children: [
